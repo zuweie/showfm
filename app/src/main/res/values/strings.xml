@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Showfm</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_startup">StartupActivity</string>
+    <string name="load_data_ok">load data ok</string>
+    <string name="load_data_unusual">load data unusual</string>
+    <string name="start_up_tips">Loading...</string>
+    <string name="title_activity_record">record</string>
+    <string name="title_activity_playing_list">PlayingListActivity</string>
+
+    <string name="load_data_status_ok">ok</string>
+    <string name="load_data_status_api_err">api err</string>
+    <string name="load_data_status_json_err">json err</string>
+    <string name="load_data_start">loading data... please wait...</string>
+</resources>
