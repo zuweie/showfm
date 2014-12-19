@@ -46,6 +46,11 @@ public class MainActivity extends Activity {
         Novel novel = new Novel();
         mNovel_data = novel.loadData(this, null, null, null, "updated desc");
 
+        /* Start the PlaybackService*/
+        Intent it = new Intent(MainActivity.this, PlayBackService.class);
+        startService(it);
+        /* Start the PlaybackService*/
+
         // Init the UI
         mPullToRefreshGridView = (PullToRefreshGridView) findViewById(R.id.pull_refresh_grid);
         mGridView = mPullToRefreshGridView.getRefreshableView();
@@ -56,10 +61,11 @@ public class MainActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-                long novelid = mAdapter.getItemId(position);
+                ContentValues data = (ContentValues)mAdapter.getItem(position);
                 Intent it = new Intent(MainActivity.this, PlayingListActivity.class);
-                it.putExtra("nvl", novelid);
+                it.putExtra("nvl", data.getAsInteger(Novel.ID));
                 it.putExtra("pm", MyConstant.PM_NOVEL);
+                it.putExtra("nvlf", data.getAsString(Novel.URL));
                 MainActivity.this.startActivity(it);
             }
         });
@@ -77,7 +83,16 @@ public class MainActivity extends Activity {
         });
 
         // load the novel data from db
+    }
 
+    @Override
+    protected void onDestroy() {
+
+        /* stop the PlayBackService */
+        Intent it = new Intent(MainActivity.this, PlayBackService.class);
+        stopService(it);
+        /* stop the PlayBackService */
+        super.onDestroy();
     }
 
     @Override

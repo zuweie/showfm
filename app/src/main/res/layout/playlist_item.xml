@@ -20,15 +20,15 @@
         android:layout_toRightOf="@+id/playing_item_img"
         android:layout_toEndOf="@+id/playing_item_img" />
 
-    <ProgressBar
-        style="?android:attr/progressBarStyleSmall"
-        android:layout_width="match_parent"
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/playing_item_progress"
-        android:layout_below="@+id/playing_item_title"
-        android:layout_toRightOf="@+id/playing_item_img"
-        android:layout_toEndOf="@+id/playing_item_img"
-        android:visibility="gone"/>
+        android:text="donwload--start"
+        android:id="@+id/playing_item_download"
+        android:layout_alignBottom="@+id/playing_item_title"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true" />
 
 
 </RelativeLayout>

@@ -29,6 +29,7 @@ public class Novel extends MyData{
     public final static String NJNAME = "nj_name";
     public final static String NJID = "nj_id";
     public final static String NAME = "novel_name";
+    public final static String URL  = "url";
     public final static String POSTER = "poster";
     public final static String BODY = "body";
     public final static String UPDATED = "updated";
@@ -50,20 +51,31 @@ public class Novel extends MyData{
 
         if (!jelem.isNull(Novel.ID))
             data.put(Novel.ID, jelem.getInt(Novel.ID));
+
         if (!jelem.isNull(Novel.NJID))
             data.put(Novel.NJID, jelem.getString(Novel.NJID));
-        if (!jelem.isNull(Novel.NAME))
+
+        if (!jelem.isNull(Novel.NJNAME))
             data.put(Novel.NJNAME, jelem.getString(Novel.NJNAME));
+
         if (!jelem.isNull(Novel.NAME))
             data.put(Novel.NAME, jelem.getString(Novel.NAME));
+
+        if (!jelem.isNull(Novel.URL))
+            data.put(Novel.URL, jelem.getString(Novel.URL));
+
         if (!jelem.isNull(Novel.BODY))
             data.put(Novel.BODY, jelem.getString(Novel.BODY));
+
         if (!jelem.isNull(Novel.POSTER))
             data.put(Novel.POSTER, jelem.getString(Novel.POSTER));
+
         if (!jelem.isNull(Novel.KEYWORD))
             data.put(Novel.KEYWORD,jelem.getString(Novel.KEYWORD));
+
         if(!jelem.isNull(Novel.CATEGORY))
             data.put(Novel.CATEGORY, jelem.getString(Novel.CATEGORY));
+
         if(!jelem.isNull(Novel.UPDATED)) {
             try {
                 String date = jelem.getString(Novel.UPDATED);
@@ -87,6 +99,7 @@ public class Novel extends MyData{
         data.put(Novel.NJID, cursor.getString(cursor.getColumnIndex(Novel.NJID)));
         data.put(Novel.NJNAME, cursor.getString(cursor.getColumnIndex(Novel.NJNAME)));
         data.put(Novel.NAME, cursor.getString(cursor.getColumnIndex(Novel.NAME)));
+        data.put(Novel.URL, cursor.getString(cursor.getColumnIndex(Novel.URL)));
         data.put(Novel.BODY, cursor.getString(cursor.getColumnIndex(Novel.BODY)));
         data.put(Novel.POSTER, cursor.getString(cursor.getColumnIndex(Novel.POSTER)));
         data.put(Novel.KEYWORD, cursor.getString(cursor.getColumnIndex(Novel.KEYWORD)));

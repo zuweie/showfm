@@ -19,13 +19,14 @@ public class MyOpenHelper extends SQLiteOpenHelper{
                                                  + Novel.NJNAME + " VARCJAR(255) DEFAULT NULL, "
                                                  + Novel.NJID + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.NAME + " VARCHAR(255) DEFAULT NULL, "
+                                                 + Novel.URL  + " TEXT DEFAULT NULL, "
                                                  + Novel.BODY + " TEXT DEFAULT NULL, "
                                                  + Novel.POSTER + " TEXT DEFAULT NULL, "
                                                  + Novel.KEYWORD + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.CATEGORY + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.UPDATED + " UNSIGNED BIG INT DEFAULT 0, "
                                                  + Novel.STATUS + " TINYINT DEFAULT 0"
-                                                 + " );";
+                                                 + " ); ";
 
     /* SQL to Create the novel update time */
     private final static String SQL_CREATE_MARK = " CREATE TABLE " +MyConstant.MARKTAB+ " ( "
@@ -34,14 +35,26 @@ public class MyOpenHelper extends SQLiteOpenHelper{
                                                 + MyConstant.MF_DATE + " VARCHAR(255) DEFAULT '1999/12/30');";
 
     private final static String SQL_CREATE_RECORD = " CREATE TABLE " + Record.TAB + " ( "
-                                                  + Record.ID + "INTEGER PRIMARY KEY, "
+                                                  + Record.ID + " INTEGER PRIMARY KEY, "
                                                   + Record.NJID + " VARCHAR(255) DEFAULT NULL, "
                                                   + Record.NJNAME + " VARCHAR(255) DEFAULT NULL, "
                                                   + Record.NAME + " VARCHAR(255) DEFAULT NULL, "
                                                   + Record.URL + " TEXT DEFAULT NULL, "
                                                   + Record.NOVELID + " INTEGER, "
+                                                  + Record.DOWNLOADID + " INTEGER DEFAULT -1, "
                                                   + Record.UPDATED + " UNSIGNED BIG INT DEFAULT 0 "
                                                   + " ); ";
+
+    private final static String SQL_CREATE_DOWNLOAD = " CREATE TABLE " + Downloader.TAB + " ( "
+                                                    + Downloader.ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                                                    + Downloader.FILENAME + " VARCHAR(255) DEFAULT NULL, "
+                                                    + Downloader.PATH + " VARCHAR(255) DEFAULT NULL, "
+                                                    + Downloader.URL + " TEXT DEFAULT NULL, "
+                                                    + Downloader.STATUS + " INTEGER DEFAULT 0, "
+                                                    + Downloader.ERR + " TEXT DEFAULT NULL, "
+                                                    + Downloader.FILESZ + " INTEGER DEFAULT 0, "
+                                                    + Downloader.LASTPOS + " INTEGER DEFAULT 0 "
+                                                    + " ); ";
 
     MyOpenHelper(Context c){
         super(c, DATABASE, null, DATABASE_VERSION);
@@ -53,6 +66,7 @@ public class MyOpenHelper extends SQLiteOpenHelper{
         db.execSQL(SQL_CREATE_NOVEL);
         db.execSQL(SQL_CREATE_RECORD);
         db.execSQL(SQL_CREATE_MARK);
+        db.execSQL(SQL_CREATE_DOWNLOAD);
 
         /* INSERT mark tab time */
         ContentValues data = new ContentValues();
@@ -65,7 +79,5 @@ public class MyOpenHelper extends SQLiteOpenHelper{
     }
 
     @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-
-    }
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {}
 }

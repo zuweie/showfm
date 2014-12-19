@@ -1,7 +1,9 @@
 package com.example.zuweie.showfm;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -10,6 +12,7 @@ import org.json.JSONObject;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.List;
 
 /**
  * Created by zuweie on 12/10/14.
@@ -24,6 +27,7 @@ public class Record extends MyData{
     public final static String URL  = "url";
     public final static String UPDATED = "updated";
     public final static String NOVELID = "novel_id";
+    public final static String DOWNLOADID = "download_id";
 
     private SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
@@ -69,6 +73,7 @@ public class Record extends MyData{
         data.put(Record.URL, cursor.getString(cursor.getColumnIndex(Record.URL)));
         data.put(Record.UPDATED, cursor.getLong(cursor.getColumnIndex(Record.UPDATED)));
         data.put(Record.NOVELID, cursor.getInt(cursor.getColumnIndex(Record.NOVELID)));
+        data.put(Record.DOWNLOADID, cursor.getInt(cursor.getColumnIndex(Record.DOWNLOADID)));
 
         return data;
     }
@@ -80,4 +85,26 @@ public class Record extends MyData{
         return ja;
     }
 
+    public void loadDownloader (Context c, List<ContentValues> datas) {
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        Downloader downloader = new Downloader();
+        for(int i=0; i<datas.size(); ++i){
+            ContentValues data = datas.get(i);
+
+            int downloadid = data.getAsInteger(Record.DOWNLOADID);
+
+            if (downloadid > 0){
+                ContentValues dd = downloader.loadData(c, downloadid);
+                data.putAll(dd);
+            }
+        }
+        db.close();
+    }
+
+    public void saveDownloader(Context c, int downloadid){
+        ContentValues data = new ContentValues();
+        data.put(Record.DOWNLOADID, downloadid);
+        
+    }
 }

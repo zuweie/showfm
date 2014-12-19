@@ -26,6 +26,12 @@
             android:name="com.example.zuweie.showfm.PlayingListActivity"
             android:label="@string/title_activity_playing_list" >
         </activity>
+
+        <service
+            android:name="com.example.zuweie.showfm.PlayBackService"
+            android:enabled="true"
+            android:exported="true" >
+        </service>
     </application>
 
 </manifest>

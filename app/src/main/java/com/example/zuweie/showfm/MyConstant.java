@@ -9,15 +9,20 @@ public class MyConstant {
     public final static String TAG_NOVEL_JSON = "novel_json";
     public final static String TAG_RECORD_JSON = "record_json";
     public final static String TAG_RECORD_API  = "record_api";
+    public final static String TAG_PLAYBACK   = "playback";
+    public final static String TAG_DOWNLOADER = "downloader";
     /*ERROR CODE*/
 
     /*ERROR MSG*/
+
+    /* LOG MESSAGE */
 
     /*mark tab*/
     public final static String MARKTAB = "mark";
     public final static String MF_ID      = "id";
     public final static String MF_TABNAME = "tabname";
     public final static String MF_DATE    = "date";
+
 
     /*api*/
     //public final static String NVL_API = "http://www.showfm.net/api/novel.asp";

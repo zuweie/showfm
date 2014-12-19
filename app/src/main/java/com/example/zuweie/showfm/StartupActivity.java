@@ -23,9 +23,9 @@ public class StartupActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        this.setTheme(R.style.StartUpActionBar);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_startup);
-        this.setTheme(R.style.StartUpActionBar);
         new loadDataTask().execute();
     }
 
