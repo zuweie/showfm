@@ -26,9 +26,9 @@
         android:layout_height="wrap_content"
         android:text="donwload--start"
         android:id="@+id/playing_item_download"
-        android:layout_alignBottom="@+id/playing_item_title"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true" />
+        android:layout_below="@+id/playing_item_title"
+        android:layout_toRightOf="@+id/playing_item_img"
+        android:layout_toEndOf="@+id/playing_item_img" />
 
 
 </RelativeLayout>

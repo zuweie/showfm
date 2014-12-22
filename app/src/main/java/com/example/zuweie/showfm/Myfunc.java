@@ -29,16 +29,16 @@ public class Myfunc {
 
     public static String getValidUrl (String foler, String itemurl, int expire) throws NoSuchAlgorithmException {
 
-        String down = "/downloads/"+foler+"/"+itemurl;
+        String down = "/downloads/"+foler+itemurl;
         // sign
         long etime = System.currentTimeMillis()/1000L + expire;
 
-        String token = "qR9sXisWuGzk3";
+        String token = "";
         String sign  = token+"&"+etime+"&"+down;
 
         sign = Myfunc.md5(sign);
 
         sign = sign.substring(12, 20) + etime;
-        return "http://dl.showfm.net/downloads/"+foler+"/"+ Uri.encode(itemurl)+"?_upt="+sign;
     }
+
 }

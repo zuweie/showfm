@@ -45,9 +45,6 @@ import java.util.zip.Inflater;
 
 public class PlayingListActivity extends Activity {
 
-    /* api */
-    //private final static String RED_API = "http://www.showfm.net/api/record.asp";
-
     /* content data */
     private List<ContentValues> mPlaying_data;
     private Record mRecord = new Record();
@@ -59,9 +56,11 @@ public class PlayingListActivity extends Activity {
     private PullToRefreshListView mPullToRefreshListView;
     private ListView mPlayinglistView;
     private MyAdapter mMyadapter;
+    //private PlayingListHandler mHandler;
 
     /* PlayBack data */
     private Messenger mPlayback;
+    private Messenger mItSelf;
     private boolean mBindService = false;
 
     private ServiceConnection mConnection = new ServiceConnection() {
@@ -73,7 +72,7 @@ public class PlayingListActivity extends Activity {
             try {
                 // log to service
                 Message msg = Message.obtain(null, PlayBackService.MSG_LOGIN);
-                msg.replyTo = new Messenger(new PlayingListHandler());
+                msg.replyTo = mItSelf;
                 mPlayback.send(msg);
 
                 // post request to get Record list
@@ -101,6 +100,8 @@ public class PlayingListActivity extends Activity {
     public final static int MSG_ON_DOWNLOAD_DONE = 0x4;
     public final static int MSG_ON_DOWNLOAD_PAUSED = 0x6;
     public final static int MSG_ON_DOWNLOAD_ERR    = 0x7;
+    public final static int MSG_ON_DOWNLOAD_STARTED = 0x8;
+    public final static int MSG_ON_DOWNLOAD_DELETE = 0X9;
     public final static int MSG_ON_READY_DOWNLOAD = 0x5;
 
     @Override
@@ -117,6 +118,8 @@ public class PlayingListActivity extends Activity {
         }
 
         /* init the UI */
+        //mHandler = new PlayingListHandler();
+        mItSelf = new Messenger(new PlayingListHandler());
         mPullToRefreshListView = (PullToRefreshListView)this.findViewById(R.id.playing_list);
         mPlayinglistView = mPullToRefreshListView.getRefreshableView();
         mMyadapter = new MyAdapter();
@@ -132,7 +135,7 @@ public class PlayingListActivity extends Activity {
                         try {
 
                             String url = item.getAsString(Record.URL);
-                            url = Myfunc.getValidUrl(mNovelFolder, url, 900);
+                            url = Myfunc.getValidUrl(mNovelFolder+"/", url, 900);
                             Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
                             msg.obj = url;
                             mPlayback.send(msg);
@@ -259,7 +262,7 @@ public class PlayingListActivity extends Activity {
         public View getView(int position, View convertView, ViewGroup parent) {
             Holder holder;
             ContentValues data = (ContentValues)this.getItem(position);
-
+            data.put("itempos",position);
             if (convertView == null){
                 LayoutInflater inflater = PlayingListActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.playlist_item, null);
@@ -272,15 +275,55 @@ public class PlayingListActivity extends Activity {
                     @Override
                     public void onClick(View v) {
 
-                        if (isNovelMode()){
-                            ContentValues data = (ContentValues)v.getTag();
-                            int downloadid = data.getAsInteger(Record.DOWNLOADID);
-                            if (downloadid < 0){
-                                // create the downloader
-                                Downloader downloader = new Downloader();
-
+                        ContentValues rdata = (ContentValues)v.getTag();
+                        //int state = rdata.getAsInteger(Downloader.STATUS);
+                        if (isNovelMode() && mPlayback != null){
+                            Message msg = null;
+                            if (rdata.getAsInteger(Record.DOWNLOADID) > 0){
+                              // get start to download
+                                if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED
+                                    || rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
+                                    // TODO : start download
+                                    msg = Message.obtain(null, PlayBackService.MSG_START_DOWNLOAD_REC);
+                                    msg.obj = rdata.getAsInteger(Record.DOWNLOADID);
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("itempos");
+                                    rdata.put(Downloader.STATUS, Downloader.STA_STARTED);
+                                }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
+                                    // TODO : pause download
+                                    msg = Message.obtain(null, PlayBackService.MSG_PAUSE_DOWNLOAD_REC);
+                                    msg.obj = rdata.getAsInteger(Record.DOWNLOADID);
+                                }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE
+                                        || rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR) {
+                                    Record record = new Record();
+                                    record.deleteDownloader(PlayingListActivity.this, rdata);
+                                    msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DELETE);
+                                    try {
+                                        mItSelf.send(msg);
+                                    } catch (RemoteException e) {
+                                        Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
+                                    }
+                                    return;
+                                }
+                            }else{
+                                // TODO : create downloader & start download
+                                int downloadid = new Record().createDownloader(PlayingListActivity.this, rdata);
+                                msg = Message.obtain(null, PlayBackService.MSG_START_DOWNLOAD_REC);
+                                msg.obj = (Integer)downloadid;
+                                msg.arg1 = rdata.getAsInteger(Record.ID);
+                                msg.arg2 = rdata.getAsInteger("itempos");
+                                rdata.put(Downloader.STATUS, Downloader.STA_STARTED);
                             }
+
+                            try {
+                                mPlayback.send(msg);
+                            } catch (RemoteException e) {
+                                Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
+                            }
+                            rdata.put("buttonlock", true);
+                            v.setClickable(false);
                         }
+
                     }
                 });
                 convertView.setTag(holder);
@@ -289,9 +332,30 @@ public class PlayingListActivity extends Activity {
             }
 
 
-
+            // ui update
             if (isNovelMode()) {
-                holder.text.setText(data.getAsString(Record.NAME));
+
+                if (data.get("buttonlock") != null && !data.getAsBoolean("buttonlock")){
+                    holder.bt.setClickable(true);
+                }
+
+                if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
+                    holder.text.setText("Downloading... "+data.getAsInteger("progress"));
+                    holder.bt.setText("Download started... pause it ?");
+                }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE){
+                    holder.text.setText("Download done!");
+                    holder.bt.setText("Download done! delete file?");
+                }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
+                    holder.text.setText("Downloader err: " + data.getAsString(Downloader.ERR));
+                    holder.bt.setText("Download err! delete uncompleted file?");
+                }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
+                    holder.text.setText("Download paused!");
+                    holder.bt.setText("Download paused... start it?");
+                }else {
+                    holder.text.setText(data.getAsString(Record.NAME));
+                    holder.bt.setText("Download start!");
+                }
+
                 holder.bt.setTag(data);
             }
 
@@ -365,6 +429,7 @@ public class PlayingListActivity extends Activity {
                         if (isNovelMode()){
                             ContentValues data = mPlaying_data.get(validpos);
                             data.put(Downloader.STATUS, (Integer)msg.obj);
+                            data.put("buttonlock", false);
                             mMyadapter.notifyDataSetChanged();
                         }
                     }
@@ -380,6 +445,22 @@ public class PlayingListActivity extends Activity {
                             mMyadapter.notifyDataSetChanged();
                         }
                     }
+                    break;
+                case MSG_ON_DOWNLOAD_STARTED:
+                    itemid = msg.arg1;
+                    itempos = msg.arg2;
+                    validpos = getValidPos(itemid, itempos);
+                    if (isVisiblePosition(validpos)){
+                        if (isNovelMode()){
+                            ContentValues data = mPlaying_data.get(validpos);
+                            data.put(Downloader.STATUS, (Integer)msg.obj);
+                            data.put("buttonlock", false);
+                            mMyadapter.notifyDataSetChanged();
+                        }
+                    }
+                    break;
+                case MSG_ON_DOWNLOAD_DELETE:
+                    mMyadapter.notifyDataSetChanged();
                     break;
                 default:
                     super.handleMessage(msg);

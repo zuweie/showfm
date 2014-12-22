@@ -70,15 +70,25 @@ public abstract class MyData {
         return r;
     }
 
-    public int updateData(Context c, List<ContentValues> datas){
+
+    public int updateData(Context c, List<ContentValues> datas, String selection, String[] selectionArgs){
 
         MyOpenHelper dbh = new MyOpenHelper(c);
         SQLiteDatabase db = dbh.getWritableDatabase();
         int r = 0;
         for (int i=0; i<datas.size(); ++i){
             ContentValues data = datas.get(i);
-            r = db.update(mTab, data, Novel.ID + " = " + data.getAsInteger(Novel.ID), null);
+            r = db.update(mTab, data, selection, selectionArgs);
         }
+        db.close();
+        return r;
+    }
+
+    public int updateData(Context c, ContentValues data, String selection, String[] selectionArgs){
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        int r = 0;
+        r = db.update(mTab, data, selection, selectionArgs);
         db.close();
         return r;
     }

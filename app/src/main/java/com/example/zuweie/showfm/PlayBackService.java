@@ -19,6 +19,7 @@ import org.json.JSONException;
 
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
+import java.util.LinkedList;
 import java.util.List;
 
 public class PlayBackService extends Service {
@@ -38,6 +39,7 @@ public class PlayBackService extends Service {
     public final static int MSG_LOAD_RECORD_LIST = 0x7;
     public final static int MSG_START_DOWNLOAD_REC = 0x8;
     public final static int MSG_PAUSE_DOWNLOAD_REC = 0x9;
+    public final static int MSG_CLEANUP_DOWNLOAD = 0x10;
 
     /* status define */
     public final static int STA_IDLE = 0x0;
@@ -111,6 +113,8 @@ public class PlayBackService extends Service {
         mMp3Status = new Status();
 
         mDoingWhat = new DoingWhat();
+
+        mDownloadtask = new LinkedList<ContentValues>();
 
         return START_STICKY;
     }
@@ -323,7 +327,7 @@ public class PlayBackService extends Service {
 
                     break;
                 case MSG_PAUSE_DOWNLOAD_REC:
-                    downloadid = msg.arg1;
+                    downloadid = (Integer)msg.obj;
                     downloadtask = removeDownloadTaskById(downloadid);
                     if (downloadtask != null){
                         new Downloader().pauseDownload(downloadtask);
@@ -335,10 +339,12 @@ public class PlayBackService extends Service {
         }
     }
 
-    class DownloadTask extends AsyncTask<Integer, Integer, Integer> implements Downloader.OnProgressListener
-                                                                          ,Downloader.OnDownloadDoneListener
-                                                                          ,Downloader.OnDownloadPauseListener
-                                                                          ,Downloader.OnDownloaderErrListener{
+    class DownloadTask extends AsyncTask<Integer, Integer, Integer>
+                        implements Downloader.OnProgressListener
+                                  ,Downloader.OnDownloadDoneListener
+                                  ,Downloader.OnDownloadPauseListener
+                                  ,Downloader.OnDownloadErrListener
+                                  ,Downloader.OnDownloadStartedListener{
 
         public DownloadTask(ContentValues downloadtask, int id, int pos){
             this.itemId = id;
@@ -363,7 +369,13 @@ public class PlayBackService extends Service {
 
             //ContentValues downloadtask = params[0];
             try {
-                new Downloader().setProgressListener(this).startDownload(PlayBackService.this, downloadtask);
+                new Downloader().setProgressListener(this)
+                                .setDownloadDoneListener(this)
+                                .setDownloadErrListener(this)
+                                .setDownloadPauseListener(this)
+                                .setDownloadStartedListener(this)
+                                .startDownload(PlayBackService.this, downloadtask);
+
             } catch (IOException e) {
                 Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
             }
@@ -427,23 +439,69 @@ public class PlayBackService extends Service {
 
         @Override
         public void onDownloadDoneUpdate() {
-            // not a UI thread drop it
+            // not a UI thread try it
+            if (mClient!=null){
+                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DONE);
+                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+                msg.arg1 = itemId;
+                msg.arg2 = itemPos;
+                try {
+                    mClient.send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
+                }
+            }
         }
 
         @Override
         public void onDownloadPauseUpdate() {
             // not a UI thread
+            if (mClient!=null){
+                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PAUSED);
+                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+                msg.arg1 = itemId;
+                msg.arg2 = itemPos;
+                try {
+                    mClient.send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
+                }
+            }
         }
 
         @Override
         public void onDownloadErrUpdate() {
-            // not a UI thread
+            if (mClient!=null){
+                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_ERR);
+                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+                msg.arg1 = itemId;
+                msg.arg2 = itemPos;
+                try {
+                    mClient.send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
+                }
+            }
+        }
+
+        @Override
+        public void onDownloadStartedUpdate() {
+            if (mClient!=null){
+                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_STARTED);
+                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+                msg.arg1 = itemId;
+                msg.arg2 = itemPos;
+                try {
+                    mClient.send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
+                }
+            }
         }
 
         int itemId;
         int itemPos;
         ContentValues downloadtask;
-
     }
 
     class GetRecordListTask extends AsyncTask<Integer, Integer, List<ContentValues>>{
@@ -468,7 +526,7 @@ public class PlayBackService extends Service {
                     record.setMark(PlayBackService.this);
                 }
                 // load the data from database;
-                newdatas = record.loadData(PlayBackService.this, null, Record.NOVELID +" = \'"+novelid+"\'",null, Record.UPDATED + " desc ");
+                newdatas = record.loadDataByNovelId(PlayBackService.this, novelid);
                 record.loadDownloader(PlayBackService.this, newdatas);
 
             } catch (IOException e) {

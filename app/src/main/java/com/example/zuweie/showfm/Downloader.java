@@ -21,7 +21,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by zuweie on 12/16/14.
@@ -44,20 +46,65 @@ public class Downloader {
     public final static int STA_DONE = 3;
     public final static int STA_ERR = -1;
 
-    //public String mFilename;
-    //public String mPath;
-    //public String mUrl;
-    //public Integer mState;
-    //public int    mId = -1;
-    //public Context mContext;
     public float mReportFrequency = 0.05f;
     private OnProgressListener mListener;
     private OnDownloadDoneListener mDoneListener;
     private OnDownloadPauseListener mPauseListener;
-    private OnDownloaderErrListener mErrListener;
+    private OnDownloadErrListener mErrListener;
+    private OnDownloadStartedListener mStartedListener;
+
+    /*listener*/
+    public static interface OnProgressListener {
+        public void onDownloadProgressUpdate(int contentlong, int done);
+    }
+
+    public static interface OnDownloadDoneListener {
+        public void onDownloadDoneUpdate();
+    }
+
+    public static interface OnDownloadPauseListener {
+        public void onDownloadPauseUpdate();
+    }
+
+    public static interface OnDownloadErrListener {
+        public void onDownloadErrUpdate();
+    }
+
+    public static interface OnDownloadStartedListener {
+        public void onDownloadStartedUpdate();
+    }
+    /*listener*/
+
+    /* set listener */
+    public Downloader setProgressListener(OnProgressListener l){
+        mListener = l;
+        return this;
+    }
+
+    public Downloader setDownloadDoneListener(OnDownloadDoneListener l){
+        this.mDoneListener = l;
+        return this;
+    }
+
+    public Downloader setDownloadPauseListener(OnDownloadPauseListener l){
+        this.mPauseListener = l;
+        return this;
+    }
+
+    public Downloader setDownloadErrListener(OnDownloadErrListener l){
+        this.mErrListener = l;
+        return this;
+    }
+
+    public Downloader setDownloadStartedListener(OnDownloadStartedListener l){
+        this.mStartedListener = l;
+        return this;
+    }
+    /* set listener */
 
     public ContentValues loadData ( SQLiteDatabase db, int id) {
 
+        // close the db outside
         Cursor c = db.query(TAB, null, Downloader.ID + " = \'" + id + "\'", null, null, null, null);
         ContentValues data = new ContentValues();
         while (c.moveToNext()){
@@ -74,7 +121,7 @@ public class Downloader {
         return data;
     }
 
-    public ContentValues loadData(Context c, int id){
+    public static ContentValues loadData(Context c, int id){
         MyOpenHelper dbh = new MyOpenHelper(c);
         SQLiteDatabase db = dbh.getWritableDatabase();
         Cursor cursor = db.query(TAB, null, Downloader.ID + " = \'"+id+"\'", null, null, null, null);
@@ -90,10 +137,11 @@ public class Downloader {
             data.put(Downloader.LASTPOS, cursor.getInt(cursor.getColumnIndex(Downloader.LASTPOS)));
         }
         cursor.close();
+        db.close();
         return data;
     }
 
-    public long saveData (Context c, ContentValues data){
+    public static long saveData (Context c, ContentValues data){
         MyOpenHelper dbh = new MyOpenHelper(c);
         SQLiteDatabase db = dbh.getWritableDatabase();
         long rid = db.insert(TAB, null, data);
@@ -101,7 +149,8 @@ public class Downloader {
         return rid;
     }
 
-    public int updateData (Context c, ContentValues data){
+
+    public static int updateData (Context c, ContentValues data){
 
         //ContentValues v = new ContentValues();
         //v.put(Downloader.STATUS, getState());
@@ -117,7 +166,7 @@ public class Downloader {
         return 0;
     }
 
-    public long createData(Context c, String filename, String path, String url) {
+    public static long createData(Context c, String filename, String path, String url) {
         ContentValues data = new ContentValues();
         data.put(Downloader.FILENAME, filename);
         data.put(Downloader.PATH, path);
@@ -126,25 +175,25 @@ public class Downloader {
         return rid;
     }
 
-    public Downloader setProgressListener(OnProgressListener l){
-        mListener = l;
-        return this;
+    public static int deleteData(Context c, ContentValues data, boolean deletefile){
+
+        if (deletefile){
+            // delete the file first
+            String f = data.getAsString(Downloader.PATH) + data.getAsString(Downloader.FILENAME);
+            File file = new File(f);
+            if (file.exists()){
+                file.delete();
+            }
+        }
+
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        String wherecase = Downloader.ID + " =\'"+data.getAsInteger(Downloader.ID) + "\'";
+        int r = db.delete(Downloader.TAB, wherecase, null);
+        db.close();
+        return r;
     }
 
-    public Downloader setDownloadDoneListener(OnDownloadDoneListener l){
-        this.mDoneListener = l;
-        return this;
-    }
-
-    public Downloader setDownloadPauseListener(OnDownloadPauseListener l){
-        this.mPauseListener = l;
-        return this;
-    }
-
-    public Downloader setDownloadErrListener(OnDownloaderErrListener l){
-        this.mErrListener = l;
-        return this;
-    }
 
     public HttpURLConnection getConnection(long downloadStart, ContentValues data) throws IOException, NoSuchAlgorithmException {
 
@@ -162,7 +211,7 @@ public class Downloader {
         conn.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)");
         conn.setRequestProperty("Connection", "Keep-Alive");
         if (downloadStart > 0)
-            conn.setRequestProperty("Range", "byte="+downloadStart+"-");
+            conn.setRequestProperty("Range", "bytes="+downloadStart+"-");
         return  conn;
     }
 
@@ -178,7 +227,7 @@ public class Downloader {
         HttpURLConnection connection = null;
         BufferedInputStream in = null;
         BufferedOutputStream bos = null;
-
+        File file = null;
 
         synchronized (downloadtask){
 
@@ -187,29 +236,38 @@ public class Downloader {
                 try{
                     Log.v(MyConstant.TAG_DOWNLOADER, "get ready to download");
                     String f = downloadtask.getAsString(Downloader.PATH) + downloadtask.getAsString(Downloader.FILENAME);
-
+                    file = new File(f);
                     if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
                         // create the new download file;
                         fos = new FileOutputStream(f);
                     }else if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
                         // open the old download file;
                         fos = new FileOutputStream(f, true);
-                        File file = new File(f);
+                        //file = new File(f);
                         if (file.exists()) {
                             lastpos = file.length();
+                            Log.d(MyConstant.TAG_DOWNLOADER, "download start "+lastpos);
                         }
                     }
                     connection = getConnection(lastpos, downloadtask);
                     connection.connect();
-                    contentlong = connection.getContentLength();
+                    // for debug
+                    printHeader(connection.getHeaderFields());
 
-                    downloadtask.put(Downloader.FILESZ, contentlong);
+                    if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
+                        contentlong = connection.getContentLength();
+                        downloadtask.put(Downloader.FILESZ, contentlong);
+                    }else{
+                        contentlong = downloadtask.getAsInteger(Downloader.FILESZ);
+                    }
+
                     // input
                     in = new BufferedInputStream(connection.getInputStream());
                     // ouput
                     bos = new BufferedOutputStream(fos, BUFFERSZ);
                     downloadtask.put(Downloader.STATUS, Downloader.STA_STARTED);
-                    Log.v(MyConstant.TAG_DOWNLOADER, "get ready is done! starting downloading...");
+                    onDownloadStarted();
+                    Log.v(MyConstant.TAG_DOWNLOADER, "starting downloading...");
                 }catch (IOException e){
 
                     downloadtask.put(Downloader.STATUS, Downloader.STA_ERR);
@@ -229,12 +287,15 @@ public class Downloader {
         }
 
         try{
-            float lastpercent = 0;
+            float lastpercent = 0.0f;
 
             while (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED && (sz = in.read(buffer))>=0 ){
 
+                Log.v(MyConstant.TAG_DOWNLOADER, "read size " + sz);
                 bos.write(buffer, 0, sz);
 
+                // progress updated
+                lastpos += sz;
                 float curpercent = (float)lastpos / (float)contentlong;
                 if ((curpercent - lastpercent) >= mReportFrequency) {
                     onUpDateProgress((int) contentlong, (int) lastpos);
@@ -248,11 +309,14 @@ public class Downloader {
                     //setState(Downloader.STA_FINISHED);
                     downloadtask.put(Downloader.STATUS, Downloader.STA_DONE);
                     onDownloadDone();
+                    Log.d(MyConstant.TAG_DOWNLOADER, "download file length: "+file.length()+" content length: "+ contentlong);
                     Log.v(MyConstant.TAG_DOWNLOADER, " donwload done!");
                 }
                 // this downloader status is pause !
-                if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED)
+                if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED) {
                     onDownloadPause();
+                    Log.d(MyConstant.TAG_DOWNLOADER, "download paused! last read pos is "+lastpos+" file saved size is "+file.length());
+                }
 
                 // update it data to db
                 updateData(c, downloadtask);
@@ -271,16 +335,29 @@ public class Downloader {
                 throw new IOException(e);
             }
         }
-
     }
 
     public int pauseDownload (ContentValues downloadtask) {
         if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
             downloadtask.put(Downloader.STATUS, Downloader.STA_PAUSED);
+            Log.v(MyConstant.TAG_DOWNLOADER, "Pause Download task!");
         }
         return 0;
     }
 
+    private void printHeader(Map<String, List<String>> header){
+        Log.d(MyConstant.TAG_DOWNLOADER, "Print Header: ");
+        Iterator<String> it = header.keySet().iterator();
+        while(it.hasNext()){
+            String key = it.next();
+            List<String> vl= header.get(key);
+            StringBuffer bf = new StringBuffer("");
+            for(int i=0; i<vl.size(); ++i){
+                bf.append(vl.get(i) + " ");
+            }
+            Log.d(MyConstant.TAG_DOWNLOADER, key+" : "+bf.toString());
+        }
+    }
 
     private void onUpDateProgress (int contentlong, int done){
         mListener.onDownloadProgressUpdate(contentlong, done);
@@ -298,20 +375,9 @@ public class Downloader {
         mErrListener.onDownloadErrUpdate();
     }
 
-    public static interface OnProgressListener {
-        public void onDownloadProgressUpdate(int contentlong, int done);
-
+    private void onDownloadStarted () {
+        mStartedListener.onDownloadStartedUpdate();
     }
 
-    public static interface OnDownloadDoneListener {
-        public void onDownloadDoneUpdate();
-    }
 
-    public static interface OnDownloadPauseListener {
-        public void onDownloadPauseUpdate();
-    }
-
-    public static interface OnDownloaderErrListener {
-        public void onDownloadErrUpdate();
-    }
 }

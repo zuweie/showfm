@@ -116,4 +116,18 @@ public class Novel extends MyData{
         return jNovel;
     }
 
+    public ContentValues loadDataById(Context c, int id){
+        ContentValues data = null;
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        String selection = Novel.ID + " = \'"+id+"\'";
+
+        Cursor cursor = db.query(TAB,null, selection, null, null, null, null, null);
+        while(cursor.moveToNext()) {
+            data = c2d(cursor);
+        }
+        cursor.close();
+        db.close();
+        return data;
+    }
 }
