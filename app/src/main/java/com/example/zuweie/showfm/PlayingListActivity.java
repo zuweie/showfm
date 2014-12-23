@@ -6,8 +6,6 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -20,27 +18,21 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
-import android.widget.Button;
-import android.widget.ImageView;
+import android.widget.ImageButton;
 import android.widget.ListView;
-import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
+
 
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
 
-import org.json.JSONException;
-
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Date;
 import java.util.List;
-import java.util.zip.Inflater;
+
 
 
 public class PlayingListActivity extends Activity {
@@ -56,7 +48,8 @@ public class PlayingListActivity extends Activity {
     private PullToRefreshListView mPullToRefreshListView;
     private ListView mPlayinglistView;
     private MyAdapter mMyadapter;
-    //private PlayingListHandler mHandler;
+    private Integer mExtendItemPos = 0;
+    private Integer mPlayingItemPos    = 0;
 
     /* PlayBack data */
     private Messenger mPlayback;
@@ -103,6 +96,9 @@ public class PlayingListActivity extends Activity {
     public final static int MSG_ON_DOWNLOAD_STARTED = 0x8;
     public final static int MSG_ON_DOWNLOAD_DELETE = 0X9;
     public final static int MSG_ON_READY_DOWNLOAD = 0x5;
+    public final static int MSG_ON_EXTEND_ITEM = 0x10;
+    public final static int MSG_ON_MP3PROGRESS_UPDTED = 0x11;
+    public final static int MSG_ON_MP3BUFFERING_UPDATED = 0x12;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -124,32 +120,51 @@ public class PlayingListActivity extends Activity {
         mPlayinglistView = mPullToRefreshListView.getRefreshableView();
         mMyadapter = new MyAdapter();
         mPlayinglistView.setAdapter(mMyadapter);
+
         mPlayinglistView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 // get item data
-                if (mPlayback != null){
-                    Adapter adapter = parent.getAdapter();
-                    ContentValues item = (ContentValues)adapter.getItem(position);
-                    if (isNovelMode()) {
-                        try {
+                Adapter adapter = parent.getAdapter();
+                ContentValues data = null;
 
-                            String url = item.getAsString(Record.URL);
-                            url = Myfunc.getValidUrl(mNovelFolder+"/", url, 900);
-                            Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
-                            msg.obj = url;
-                            mPlayback.send(msg);
+                if (mExtendItemPos > 0){
+                    // close the last item
+                    data = (ContentValues)adapter.getItem(mExtendItemPos);
+                    data.put("item_mode", 0);
+                }
 
-                        } catch (RemoteException e) {
-                            Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
-                        } catch (NoSuchAlgorithmException e){
-                            Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
-                        }
-                    }
+                // extend the new item
+                data = (ContentValues)adapter.getItem(position);
+                mExtendItemPos = position;
+                data.put("item_mode", 1);
+
+                Message msg = Message.obtain(null, MSG_ON_EXTEND_ITEM);
+                try {
+                    mItSelf.send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                 }
             }
         });
 
+        mPlayinglistView.setOnScrollListener(new AbsListView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(AbsListView view, int scrollState) {
+
+                if (mExtendItemPos >= 0){
+                    Adapter adapter = view.getAdapter();
+                    ContentValues data = (ContentValues)adapter.getItem(mExtendItemPos);
+                    if (data != null){
+                        // close the item
+                        data.put("item_mode", 0);
+                        mExtendItemPos = -1;
+                    }
+                }
+            }
+            @Override
+            public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {}
+        });
     }
 
     @Override
@@ -262,111 +277,155 @@ public class PlayingListActivity extends Activity {
         public View getView(int position, View convertView, ViewGroup parent) {
             Holder holder;
             ContentValues data = (ContentValues)this.getItem(position);
-            data.put("itempos",position);
+
+            data.put("item_pos",position);
+
+            if (data.get("item_mode") == null)
+                data.put("item_mode", 0);
+
+            if (data.get("player_status") == null)
+                data.put("player_status", PlayBackService.STA_IDLE);
+
+            if (data.get("player_curpos") == null)
+                data.put("player_curpos", 0);
+
+            if (data.get("player_duration") ==  null)
+                data.put("player_duration", 0);
+
+            if (data.get("player_buffer") == null)
+                data.put("player_buffer", 0);
+
             if (convertView == null){
                 LayoutInflater inflater = PlayingListActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.playlist_item, null);
                 holder = new Holder();
-                holder.image = (ImageView)convertView.findViewById(R.id.playing_item_img);
-                holder.text  = (TextView)convertView.findViewById(R.id.playing_item_title);
-                //holder.progressBar = (ProgressBar) convertView.findViewById(R.id.playing_item_progress);
-                holder.bt = (Button) convertView.findViewById(R.id.playing_item_download);
-                holder.bt.setOnClickListener(new View.OnClickListener() {
+                holder.esm_title = (TextView)convertView.findViewById(R.id.esm_title);
+                holder.plm = convertView.findViewById(R.id.plm_item);
+                holder.plm_playerbt = (ImageButton)convertView.findViewById(R.id.plm_playerbt);
+                holder.plm_title = (TextView)convertView.findViewById(R.id.plm_title);
+                holder.plm_seekbar = (SeekBar)convertView.findViewById(R.id.plm_player_skb);
+                //holder.plm_seekbar.setIndeterminate(false);
+                holder.plm_seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                        if (fromUser){
+                            Message msg = Message.obtain(null, PlayBackService.MSG_SEEKTO);
+                            msg.arg1 = progress;
+                            if (mPlayback != null){
+                                try {
+                                    mPlayback.send(msg);
+                                } catch (RemoteException e) {
+                                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                                }
+                            }
+                        }
+                    }
+
+                    @Override
+                    public void onStartTrackingTouch(SeekBar seekBar) {
+
+                    }
+
+                    @Override
+                    public void onStopTrackingTouch(SeekBar seekBar) {
+
+                    }
+                });
+                holder.plm_playerbt.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-
-                        ContentValues rdata = (ContentValues)v.getTag();
-                        //int state = rdata.getAsInteger(Downloader.STATUS);
-                        if (isNovelMode() && mPlayback != null){
-                            Message msg = null;
-                            if (rdata.getAsInteger(Record.DOWNLOADID) > 0){
-                              // get start to download
-                                if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED
-                                    || rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
-                                    // TODO : start download
-                                    msg = Message.obtain(null, PlayBackService.MSG_START_DOWNLOAD_REC);
-                                    msg.obj = rdata.getAsInteger(Record.DOWNLOADID);
+                        if (isNovelMode()){
+                            ContentValues rdata = (ContentValues)v.getTag();
+                            if (rdata.getAsInteger("player_status") == PlayBackService.STA_IDLE
+                              || rdata.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                                // Status of idle, play it
+                                String url = rdata.getAsString(Record.URL);
+                                try {
+                                    url = Myfunc.getValidUrl(mNovelFolder+"/", url, 900);
+                                    Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
+                                    msg.obj = url;
                                     msg.arg1 = rdata.getAsInteger(Record.ID);
-                                    msg.arg2 = rdata.getAsInteger("itempos");
-                                    rdata.put(Downloader.STATUS, Downloader.STA_STARTED);
-                                }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
-                                    // TODO : pause download
-                                    msg = Message.obtain(null, PlayBackService.MSG_PAUSE_DOWNLOAD_REC);
-                                    msg.obj = rdata.getAsInteger(Record.DOWNLOADID);
-                                }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE
-                                        || rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR) {
-                                    Record record = new Record();
-                                    record.deleteDownloader(PlayingListActivity.this, rdata);
-                                    msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DELETE);
-                                    try {
-                                        mItSelf.send(msg);
-                                    } catch (RemoteException e) {
-                                        Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                                    }
-                                    return;
-                                }
-                            }else{
-                                // TODO : create downloader & start download
-                                int downloadid = new Record().createDownloader(PlayingListActivity.this, rdata);
-                                msg = Message.obtain(null, PlayBackService.MSG_START_DOWNLOAD_REC);
-                                msg.obj = (Integer)downloadid;
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    mPlayback.send(msg);
+
+                                } catch (NoSuchAlgorithmException e) {
+                                } catch (RemoteException e) {Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());}
+                            }else if (rdata.getAsInteger("player_status") == PlayBackService.STA_PAUSED
+                                    ||rdata.getAsInteger("player_status") == PlayBackService.STA_COMPLETED) {
+                                // Status of paused, start it
+                                Message msg = Message.obtain(null, PlayBackService.MSG_START);
                                 msg.arg1 = rdata.getAsInteger(Record.ID);
-                                msg.arg2 = rdata.getAsInteger("itempos");
-                                rdata.put(Downloader.STATUS, Downloader.STA_STARTED);
+                                msg.arg2 = rdata.getAsInteger("item_pos");
+                                try {
+                                    mPlayback.send(msg);
+                                } catch (RemoteException e) {
+                                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                                }
+                            }else if (rdata.getAsInteger("player_status") == PlayBackService.STA_STARTED){
+                                // Status of playing, paused it
+                                Message msg = Message.obtain(null, PlayBackService.MSG_PAUSED);
+                                msg.arg1 = rdata.getAsInteger(Record.ID);
+                                msg.arg2 = rdata.getAsInteger("item_pos");
+                                try {
+                                    mPlayback.send(msg);
+                                } catch (RemoteException e) {
+                                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                                }
                             }
-
-                            try {
-                                mPlayback.send(msg);
-                            } catch (RemoteException e) {
-                                Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                            }
-                            rdata.put("buttonlock", true);
-                            v.setClickable(false);
                         }
-
                     }
                 });
                 convertView.setTag(holder);
             }else{
                 holder = (Holder)convertView.getTag();
             }
-
-
             // ui update
-            if (isNovelMode()) {
+            if (isNovelMode()){
+                if (data.getAsInteger("item_mode") == 1){
+                    // playback mode
+                    holder.esm_title.setVisibility(View.GONE);
+                    holder.plm.setVisibility(View.VISIBLE);
+                    holder.plm_playerbt.setTag(data);
+                    //
+                    holder.plm_title.setText(data.getAsString(Record.NAME));
 
-                if (data.get("buttonlock") != null && !data.getAsBoolean("buttonlock")){
-                    holder.bt.setClickable(true);
+                    // set imgb here
+                    if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE
+                      ||data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                        holder.plm_playerbt.setImageResource(R.drawable.play);
+                    }else if (data.getAsInteger("player_status") == PlayBackService.STA_PAUSED
+                            || data.getAsInteger("player_status") == PlayBackService.STA_COMPLETED){
+                        holder.plm_playerbt.setImageResource(R.drawable.play);
+                    }else if (data.getAsInteger("player_status") == PlayBackService.STA_STARTED){
+                        holder.plm_playerbt.setImageResource(R.drawable.pause);
+                    }
+
+                    holder.plm_seekbar.setMax(data.getAsInteger("player_duration"));
+                    holder.plm_seekbar.setProgress(data.getAsInteger("player_curpos"));
+                    holder.plm_seekbar.setSecondaryProgress(data.getAsInteger("player_buffer"));
+
+                }else{
+                    // easy mode
+                    holder.esm_title.setVisibility(View.VISIBLE);
+                    holder.esm_title.setText(data.getAsString(Record.NAME));
+                    holder.plm.setVisibility(View.GONE);
+                    holder.plm_playerbt.setTag(data);
+                    //
+                    //holder.plm_title.setText(data.getAsString(Record.NAME));
                 }
-
-                if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
-                    holder.text.setText("Downloading... "+data.getAsInteger("progress"));
-                    holder.bt.setText("Download started... pause it ?");
-                }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE){
-                    holder.text.setText("Download done!");
-                    holder.bt.setText("Download done! delete file?");
-                }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
-                    holder.text.setText("Downloader err: " + data.getAsString(Downloader.ERR));
-                    holder.bt.setText("Download err! delete uncompleted file?");
-                }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
-                    holder.text.setText("Download paused!");
-                    holder.bt.setText("Download paused... start it?");
-                }else {
-                    holder.text.setText(data.getAsString(Record.NAME));
-                    holder.bt.setText("Download start!");
-                }
-
-                holder.bt.setTag(data);
             }
-
             return convertView;
         }
 
         class Holder {
-            ImageView image;
-            TextView  text;
-            Button bt;
+            View plm;
+            TextView esm_title;
+            TextView plm_title;
+            ImageButton plm_playerbt;
+            SeekBar plm_seekbar;
         }
+
+        //public Integer mExtendItemPos = 0;
     }
 
     class PlayingListHandler extends Handler {
@@ -375,13 +434,29 @@ public class PlayingListActivity extends Activity {
             int itemid = 0;
             int itempos = 0;
             int validpos = 0;
+            PlayBackService.Status status = null;
             switch(msg.what){
                 case MSG_ON_MP3STA_UPDATE:
-                    PlayBackService.Status status = (PlayBackService.Status)msg.obj;
+                    status = (PlayBackService.Status)msg.obj;
                     if (status.status == PlayBackService.STA_ERROR){
-
+                        itemid = status.itemId;
+                        itempos = status.itemPos;
+                        validpos = getValidPos(itemid, itempos);
+                        if (isVisiblePosition(validpos)){
+                            ContentValues data = mPlaying_data.get(validpos);
+                            data.put("player_status", (Integer)status.status);
+                            mMyadapter.notifyDataSetChanged();
+                        }
                     }else if (status.status == PlayBackService.STA_COMPLETED){
-                        // go next
+
+                        itemid = status.itemId;
+                        itempos = status.itemPos;
+                        validpos = getValidPos(itemid, itempos);
+                        if (isVisiblePosition(validpos)){
+                            ContentValues data = mPlaying_data.get(validpos);
+                            data.put("player_status", (Integer)status.status);
+                            mMyadapter.notifyDataSetChanged();
+                        }
                     }else if(status.status == PlayBackService.STA_READY){
                         // if get ready tell the playback start playing
                         Message ms = Message.obtain(null, PlayBackService.MSG_START);
@@ -390,6 +465,53 @@ public class PlayingListActivity extends Activity {
                         } catch (RemoteException e) {
                             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                         }
+                    }else if (status.status == PlayBackService.STA_STARTED){
+                        itemid = status.itemId;
+                        itempos = status.itemPos;
+                        validpos = getValidPos(itemid, itempos);
+                        if (isVisiblePosition(validpos)){
+                            ContentValues data = mPlaying_data.get(validpos);
+                            data.put("player_status", (Integer)status.status);
+                            data.put("player_curpos", status.position);
+                            data.put("player_duration", status.duration);
+                            mMyadapter.notifyDataSetChanged();
+                        }
+                    }else if (status.status == PlayBackService.STA_PAUSED){
+                        itemid = status.itemId;
+                        itempos = status.itemPos;
+                        validpos = getValidPos(itemid, itempos);
+                        if (isVisiblePosition(validpos)){
+                            ContentValues data = mPlaying_data.get(validpos);
+                            data.put("player_status", (Integer)status.status);
+                            mMyadapter.notifyDataSetChanged();
+                        }
+                    }else if (status.status == PlayBackService.STA_PREPARING){
+
+                    }
+
+                    break;
+                case MSG_ON_MP3PROGRESS_UPDTED:
+                    status = (PlayBackService.Status) msg.obj;
+                    itemid = status.itemId;
+                    itempos = status.itemPos;
+                    validpos = getValidPos(itemid, itempos);
+                    if (isVisiblePosition(validpos)){
+                        ContentValues data = mPlaying_data.get(validpos);
+                        data.put("player_curpos", status.position);
+                        data.put("player_duration", status.duration);
+                        mMyadapter.notifyDataSetChanged();
+                    }
+                    break;
+                case MSG_ON_MP3BUFFERING_UPDATED:
+                    status = (PlayBackService.Status) msg.obj;
+                    itemid = status.itemId;
+                    itempos = status.itemPos;
+                    validpos = getValidPos(itemid, itempos);
+                    if (isVisiblePosition(validpos)){
+                        ContentValues data = mPlaying_data.get(validpos);
+                        int bufferpos = (int) (status.buffer_percent * 0.01 * status.duration);
+                        data.put("player_buffer", bufferpos);
+                        mMyadapter.notifyDataSetChanged();
                     }
                     break;
                 case MSG_ON_LOAD_RECORD_LIST_DONE:
@@ -422,20 +544,20 @@ public class PlayingListActivity extends Activity {
                     }
                     break;
                 case MSG_ON_DOWNLOAD_PAUSED:
-                    itemid = msg.arg1;
+                    itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
                     if (isVisiblePosition(validpos)){
                         if (isNovelMode()){
                             ContentValues data = mPlaying_data.get(validpos);
                             data.put(Downloader.STATUS, (Integer)msg.obj);
-                            data.put("buttonlock", false);
+                            //data.put("buttonlock", false);
                             mMyadapter.notifyDataSetChanged();
                         }
                     }
                     break;
                 case MSG_ON_DOWNLOAD_ERR:
-                    itemid = msg.arg1;
+                    itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
                     if (isVisiblePosition(validpos)){
@@ -447,19 +569,22 @@ public class PlayingListActivity extends Activity {
                     }
                     break;
                 case MSG_ON_DOWNLOAD_STARTED:
-                    itemid = msg.arg1;
+                    itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
                     if (isVisiblePosition(validpos)){
                         if (isNovelMode()){
                             ContentValues data = mPlaying_data.get(validpos);
                             data.put(Downloader.STATUS, (Integer)msg.obj);
-                            data.put("buttonlock", false);
+                            //data.put("buttonlock", false);
                             mMyadapter.notifyDataSetChanged();
                         }
                     }
                     break;
                 case MSG_ON_DOWNLOAD_DELETE:
+                    mMyadapter.notifyDataSetChanged();
+                    break;
+                case MSG_ON_EXTEND_ITEM:
                     mMyadapter.notifyDataSetChanged();
                     break;
                 default:

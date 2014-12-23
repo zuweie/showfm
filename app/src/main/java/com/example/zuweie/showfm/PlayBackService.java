@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class PlayBackService extends Service {
 
@@ -32,20 +34,19 @@ public class PlayBackService extends Service {
     public final static int MSG_LOGIN = 0x1;
     public final static int MSG_LOGOUT = 0x2;
     public final static int MSG_PLAY = 0X3;
-    public final static int MSG_PLAY_LOCAL = 0x7;
     public final static int MSG_START = 0x4;
     public final static int MSG_PAUSED = 0X5;
     public final static int MSG_SEEKTO = 0x6;
     public final static int MSG_LOAD_RECORD_LIST = 0x7;
     public final static int MSG_START_DOWNLOAD_REC = 0x8;
     public final static int MSG_PAUSE_DOWNLOAD_REC = 0x9;
-    public final static int MSG_CLEANUP_DOWNLOAD = 0x10;
 
     /* status define */
     public final static int STA_IDLE = 0x0;
     public final static int STA_STARTED = 0x1;
     public final static int STA_PAUSED = 0x2;
     public final static int STA_PREPARING = 0x3;
+    //public final static int STA_BUFFERING = 0x7;
     public final static int STA_READY = 0x4;
     public final static int STA_ERROR = 0x5;
     public final static int STA_COMPLETED = 0x6;
@@ -54,6 +55,8 @@ public class PlayBackService extends Service {
     private static Status mMp3Status;
     private DoingWhat mDoingWhat;
     private List<ContentValues> mDownloadtask = null;
+    private Timer mPlayerProgressUpdater;
+    //private boolean isUpdaterCancel = true;
 
     public PlayBackService() {super();}
 
@@ -70,6 +73,7 @@ public class PlayBackService extends Service {
         mPlayback.setOnErrorListener(new MediaPlayer.OnErrorListener() {
             @Override
             public boolean onError(MediaPlayer mp, int what, int extra) {
+                stopUpdater();
                 mMp3Status.err_extra = extra;
                 mMp3Status.err_what  = what;
                 mMp3Status.updateStatus(PlayBackService.STA_ERROR,  mClient);
@@ -81,8 +85,11 @@ public class PlayBackService extends Service {
         mPlayback.setOnBufferingUpdateListener(new MediaPlayer.OnBufferingUpdateListener() {
             @Override
             public void onBufferingUpdate(MediaPlayer mp, int percent) {
-                mMp3Status.buffer_percent = percent;
-                //mStatus.updateStatus(STA_PREPARING, mClient);
+                if (percent - mMp3Status.buffer_percent > 4){
+                    mMp3Status.buffer_percent = percent;
+                    mMp3Status.updateMP3BufferProgress(mClient);
+                    Log.v(MyConstant.TAG_PLAYBACK, "Updated buffer percent : " + percent);
+                }
             }
         });
 
@@ -91,7 +98,6 @@ public class PlayBackService extends Service {
             @Override
             public void onPrepared(MediaPlayer mp) {
                 mMp3Status.updateStatus(PlayBackService.STA_READY, mClient);
-
             }
         });
 
@@ -99,7 +105,8 @@ public class PlayBackService extends Service {
         mPlayback.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
-                mMp3Status.updateStatus(PlayBackService.STA_COMPLETED, mClient);
+                //mMp3Status.updateStatus(PlayBackService.STA_COMPLETED, mClient);
+                stopUpdater();
             }
         });
 
@@ -115,6 +122,8 @@ public class PlayBackService extends Service {
         mDoingWhat = new DoingWhat();
 
         mDownloadtask = new LinkedList<ContentValues>();
+
+        //mPlayerProgressUpdater = new Timer();
 
         return START_STICKY;
     }
@@ -137,7 +146,6 @@ public class PlayBackService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         // TODO: Return the communication channel to the service.
-        //throw new UnsupportedOperationException("Not yet implemented");
         return mMessenger.getBinder();
     }
 
@@ -147,7 +155,7 @@ public class PlayBackService extends Service {
         try {
             mPlayback.reset();
             mPlayback.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mMp3Status.updateStatus();
+            //mMp3Status.updateStatus();
 
             mPlayback.setDataSource(PlayBackService.this, Uri.parse(uri));
             mPlayback.prepareAsync();
@@ -163,7 +171,7 @@ public class PlayBackService extends Service {
         try {
             mPlayback.reset();
             mPlayback.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            mMp3Status.updateStatus();
+            //mMp3Status.updateStatus();
 
             mPlayback.setDataSource(url);
             mPlayback.prepareAsync();
@@ -196,8 +204,6 @@ public class PlayBackService extends Service {
         }
     }
 
-
-
     public class DoingWhat {
         public Boolean isLoadingRecordList = new Boolean(false);
 
@@ -209,6 +215,29 @@ public class PlayBackService extends Service {
             isLoadingRecordList = v;
         }
     }
+
+    public void startUpdater() {
+        mPlayerProgressUpdater = new Timer();
+        mPlayerProgressUpdater.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (mMp3Status.status == PlayBackService.STA_STARTED && mMp3Status.canGetPostion()){
+                    mMp3Status.position = mPlayback.getCurrentPosition();
+                    mMp3Status.duration = mPlayback.getDuration();
+                    mMp3Status.updateMP3Progress(mClient);
+                }
+
+            }
+        }, 500, 1000);
+    }
+
+    public void stopUpdater() {
+        if (mPlayerProgressUpdater != null)
+            mPlayerProgressUpdater.cancel();
+        mPlayerProgressUpdater = null;
+    }
+
+
 
     private ContentValues createDownloadTaskById(int id){
         Downloader downloader = new Downloader();
@@ -248,6 +277,7 @@ public class PlayBackService extends Service {
             return (status != PlayBackService.STA_IDLE && status != PlayBackService.STA_PREPARING && status != PlayBackService.STA_ERROR);
         }
 
+
         public void updateStatus (Integer status, Messenger client){
             if (status != null)
                 this.status = status;
@@ -272,6 +302,30 @@ public class PlayBackService extends Service {
             this.itemId = -1;
             this.itemPos = -1;
         }
+
+        public void updateMP3Progress (Messenger client){
+            if (client != null){
+                try{
+                    Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3PROGRESS_UPDTED);
+                    msg.obj = mMp3Status;
+                    client.send(msg);
+                }catch (RemoteException e){
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                }
+            }
+        }
+
+        public void updateMP3BufferProgress(Messenger client){
+            if (client != null){
+                try {
+                    Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3BUFFERING_UPDATED);
+                    msg.obj = mMp3Status;
+                    client.send(msg);
+                }catch (RemoteException e){
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                }
+            }
+        }
         public int status;
         //public String title;
         public int position;
@@ -295,13 +349,27 @@ public class PlayBackService extends Service {
                     break;
                 case MSG_LOGOUT:
                     mClient = null;
+                    stopUpdater();
                     break;
                 case MSG_PLAY:
+                    // clean the all the status;
+                    mMp3Status.updateStatus();
+                    stopUpdater();
                     String url = (String)msg.obj;
+                    mMp3Status.itemId = msg.arg1;
+                    mMp3Status.itemPos = msg.arg2;
                     play(url);
                     break;
                 case MSG_START:
                     start();
+                    startUpdater();
+                    break;
+                case MSG_PAUSED:
+                    paused();
+                    stopUpdater();
+                    break;
+                case MSG_SEEKTO:
+                    seekTo(msg.arg1);
                     break;
                 case MSG_LOAD_RECORD_LIST:
                     if (mDoingWhat.getLoadingRec() == false){
@@ -319,7 +387,6 @@ public class PlayBackService extends Service {
 
                             new DownloadTask(downloadtask, msg.arg1, msg.arg2).execute();
 
-                            //new Downloader().setListener(PlayBackService.this).startDownload(PlayBackService.this, downloadtask);
                         }
                     }else{
                         Log.e(MyConstant.TAG_DOWNLOADER, "had not create the download task!");
@@ -540,7 +607,7 @@ public class PlayBackService extends Service {
 
         @Override
         protected void onPostExecute (List<ContentValues> result){
-            if (mClient != null){
+            if (mClient != null  && result != null){
                 try {
                     Message msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
                     msg.obj = result;
@@ -551,4 +618,5 @@ public class PlayBackService extends Service {
             }
         }
     }
+
 }

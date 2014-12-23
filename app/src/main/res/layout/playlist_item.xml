@@ -1,34 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent">
-
-    <ImageView
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:id="@+id/playing_item_img"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:text="Small Text"
-        android:id="@+id/playing_item_title"
-        android:layout_alignParentTop="true"
-        android:layout_toRightOf="@+id/playing_item_img"
-        android:layout_toEndOf="@+id/playing_item_img" />
+        android:id="@+id/esm_title" />
 
-    <Button
-        style="?android:attr/buttonStyleSmall"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="donwload--start"
-        android:id="@+id/playing_item_download"
-        android:layout_below="@+id/playing_item_title"
-        android:layout_toRightOf="@+id/playing_item_img"
-        android:layout_toEndOf="@+id/playing_item_img" />
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/plm_item">
 
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/plm_playerbt"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true" />
 
-</RelativeLayout>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="Medium Text"
+            android:id="@+id/plm_title"
+            android:layout_alignParentTop="true"
+            android:layout_toRightOf="@+id/plm_playerbt"
+            android:layout_toEndOf="@+id/plm_playerbt" />
+
+        <SeekBar
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/plm_player_skb"
+            android:layout_below="@+id/plm_title"
+            android:layout_alignLeft="@+id/plm_title"
+            android:layout_alignStart="@+id/plm_title" />
+    </RelativeLayout>
+</LinearLayout>
