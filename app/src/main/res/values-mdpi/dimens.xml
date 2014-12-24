@@ -1,0 +1,5 @@
+<resources>
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="playinglist_item_height">100dp</dimen>
+    <dimen name="playinglist_item_heigth">20dp</dimen>
+</resources>

@@ -49,7 +49,8 @@ public class PlayingListActivity extends Activity {
     private ListView mPlayinglistView;
     private MyAdapter mMyadapter;
     private Integer mExtendItemPos = 0;
-    private Integer mPlayingItemPos    = 0;
+    private Integer mLastPlayItemID = -1;
+    private Integer mLastPlayItemPos = -1;
 
     /* PlayBack data */
     private Messenger mPlayback;
@@ -226,10 +227,10 @@ public class PlayingListActivity extends Activity {
         return mPlayMode == MyConstant.PM_NOVEL;
     }
 
-    private int getValidPos(int itemid , int itmepos){
-        if (isNovelMode()){
-            if (mPlaying_data.get(itmepos).getAsInteger(Record.ID) == itemid)
-                return itmepos;
+    private int getValidPos(int itemid , int itempos){
+        if (isNovelMode() && itemid >=0 && itempos >=0){
+            if (mPlaying_data.get(itempos).getAsInteger(Record.ID) == itemid)
+                return itempos;
             else{
                 for(int i=0; i<mPlaying_data.size();++i){
                     ContentValues data = mPlaying_data.get(i);
@@ -249,6 +250,12 @@ public class PlayingListActivity extends Activity {
             return true;
         else
             return false;
+    }
+
+    private String coverMs2Str(int ms){
+        int second = (ms / 1000) % 60;
+        int min    = (ms / 1000) / 60;
+        return ""+(min>=10?min:"0"+min)+":"+(second>=10?second:"0"+second);
     }
 
     class MyAdapter extends BaseAdapter {
@@ -278,22 +285,6 @@ public class PlayingListActivity extends Activity {
             Holder holder;
             ContentValues data = (ContentValues)this.getItem(position);
 
-            data.put("item_pos",position);
-
-            if (data.get("item_mode") == null)
-                data.put("item_mode", 0);
-
-            if (data.get("player_status") == null)
-                data.put("player_status", PlayBackService.STA_IDLE);
-
-            if (data.get("player_curpos") == null)
-                data.put("player_curpos", 0);
-
-            if (data.get("player_duration") ==  null)
-                data.put("player_duration", 0);
-
-            if (data.get("player_buffer") == null)
-                data.put("player_buffer", 0);
 
             if (convertView == null){
                 LayoutInflater inflater = PlayingListActivity.this.getLayoutInflater();
@@ -301,6 +292,7 @@ public class PlayingListActivity extends Activity {
                 holder = new Holder();
                 holder.esm_title = (TextView)convertView.findViewById(R.id.esm_title);
                 holder.plm = convertView.findViewById(R.id.plm_item);
+                holder.plm_playtime = (TextView)convertView.findViewById(R.id.plm_playtime);
                 holder.plm_playerbt = (ImageButton)convertView.findViewById(R.id.plm_playerbt);
                 holder.plm_title = (TextView)convertView.findViewById(R.id.plm_title);
                 holder.plm_seekbar = (SeekBar)convertView.findViewById(R.id.plm_player_skb);
@@ -308,7 +300,8 @@ public class PlayingListActivity extends Activity {
                 holder.plm_seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
                     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        if (fromUser){
+                        if (fromUser && ((ContentValues)(seekBar.getTag())).getAsInteger("player_status") == PlayBackService.STA_STARTED){
+                            // TODO : confirm this progress bar to the playing item
                             Message msg = Message.obtain(null, PlayBackService.MSG_SEEKTO);
                             msg.arg1 = progress;
                             if (mPlayback != null){
@@ -341,11 +334,26 @@ public class PlayingListActivity extends Activity {
                                 // Status of idle, play it
                                 String url = rdata.getAsString(Record.URL);
                                 try {
+
+                                    // TODO : clean up the last item ui data
+
+                                    int validpos = getValidPos(mLastPlayItemID, mLastPlayItemPos);
+                                    if (validpos >= 0){
+
+                                        ContentValues lastdata = mPlaying_data.get(validpos);
+                                        lastdata.put("item_mode", 0);
+                                        lastdata.put("player_status", PlayBackService.STA_IDLE);
+                                        lastdata.put("player_curpos", 0);
+                                        lastdata.put("player_duration", 0);
+                                        lastdata.put("player_buffer", 0);
+                                    }
                                     url = Myfunc.getValidUrl(mNovelFolder+"/", url, 900);
                                     Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
                                     msg.obj = url;
                                     msg.arg1 = rdata.getAsInteger(Record.ID);
                                     msg.arg2 = rdata.getAsInteger("item_pos");
+                                    mLastPlayItemID = msg.arg1;
+                                    mLastPlayItemPos = msg.arg2;
                                     mPlayback.send(msg);
 
                                 } catch (NoSuchAlgorithmException e) {
@@ -386,13 +394,15 @@ public class PlayingListActivity extends Activity {
                     holder.esm_title.setVisibility(View.GONE);
                     holder.plm.setVisibility(View.VISIBLE);
                     holder.plm_playerbt.setTag(data);
+                    holder.plm_seekbar.setTag(data);
                     //
                     holder.plm_title.setText(data.getAsString(Record.NAME));
 
                     // set imgb here
-                    if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE
-                      ||data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                    if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
                         holder.plm_playerbt.setImageResource(R.drawable.play);
+                    }else if (data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                        holder.plm_playerbt.setImageResource(R.drawable.play_err);
                     }else if (data.getAsInteger("player_status") == PlayBackService.STA_PAUSED
                             || data.getAsInteger("player_status") == PlayBackService.STA_COMPLETED){
                         holder.plm_playerbt.setImageResource(R.drawable.play);
@@ -403,6 +413,9 @@ public class PlayingListActivity extends Activity {
                     holder.plm_seekbar.setMax(data.getAsInteger("player_duration"));
                     holder.plm_seekbar.setProgress(data.getAsInteger("player_curpos"));
                     holder.plm_seekbar.setSecondaryProgress(data.getAsInteger("player_buffer"));
+                    int lefttime = data.getAsInteger("player_duration") - data.getAsInteger("player_curpos");
+                    String playtime = "- "+coverMs2Str(lefttime);
+                    holder.plm_playtime.setText(playtime);
 
                 }else{
                     // easy mode
@@ -423,6 +436,7 @@ public class PlayingListActivity extends Activity {
             TextView plm_title;
             ImageButton plm_playerbt;
             SeekBar plm_seekbar;
+            TextView plm_playtime;
         }
 
         //public Integer mExtendItemPos = 0;
@@ -435,6 +449,7 @@ public class PlayingListActivity extends Activity {
             int itempos = 0;
             int validpos = 0;
             PlayBackService.Status status = null;
+            ContentValues data = null;
             switch(msg.what){
                 case MSG_ON_MP3STA_UPDATE:
                     status = (PlayBackService.Status)msg.obj;
@@ -442,21 +457,22 @@ public class PlayingListActivity extends Activity {
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        if (isVisiblePosition(validpos)){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put("player_status", (Integer)status.status);
+                        data = mPlaying_data.get(validpos);
+                        data.put("player_status", (Integer)status.status);
+
+                        if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
-                        }
+
                     }else if (status.status == PlayBackService.STA_COMPLETED){
 
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        if (isVisiblePosition(validpos)){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put("player_status", (Integer)status.status);
+                        data = mPlaying_data.get(validpos);
+                        data.put("player_status", (Integer)status.status);
+                        if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
-                        }
+
                     }else if(status.status == PlayBackService.STA_READY){
                         // if get ready tell the playback start playing
                         Message ms = Message.obtain(null, PlayBackService.MSG_START);
@@ -466,25 +482,27 @@ public class PlayingListActivity extends Activity {
                             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                         }
                     }else if (status.status == PlayBackService.STA_STARTED){
+
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        if (isVisiblePosition(validpos)){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put("player_status", (Integer)status.status);
-                            data.put("player_curpos", status.position);
-                            data.put("player_duration", status.duration);
+                        data = mPlaying_data.get(validpos);
+                        data.put("player_status", (Integer)status.status);
+                        data.put("player_curpos", status.position);
+                        data.put("player_duration", status.duration);
+
+                        if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
-                        }
+
                     }else if (status.status == PlayBackService.STA_PAUSED){
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        if (isVisiblePosition(validpos)){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put("player_status", (Integer)status.status);
+                        data = mPlaying_data.get(validpos);
+                        data.put("player_status", (Integer)status.status);
+                        if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
-                        }
+
                     }else if (status.status == PlayBackService.STA_PREPARING){
 
                     }
@@ -495,24 +513,23 @@ public class PlayingListActivity extends Activity {
                     itemid = status.itemId;
                     itempos = status.itemPos;
                     validpos = getValidPos(itemid, itempos);
-                    if (isVisiblePosition(validpos)){
-                        ContentValues data = mPlaying_data.get(validpos);
-                        data.put("player_curpos", status.position);
-                        data.put("player_duration", status.duration);
+                    data = mPlaying_data.get(validpos);
+                    data.put("player_curpos", status.position);
+                    data.put("player_duration", status.duration);
+                    if (isVisiblePosition(validpos))
                         mMyadapter.notifyDataSetChanged();
-                    }
+
                     break;
                 case MSG_ON_MP3BUFFERING_UPDATED:
                     status = (PlayBackService.Status) msg.obj;
                     itemid = status.itemId;
                     itempos = status.itemPos;
                     validpos = getValidPos(itemid, itempos);
-                    if (isVisiblePosition(validpos)){
-                        ContentValues data = mPlaying_data.get(validpos);
-                        int bufferpos = (int) (status.buffer_percent * 0.01 * status.duration);
-                        data.put("player_buffer", bufferpos);
+                    data = mPlaying_data.get(validpos);
+                    int bufferpos = (int) (status.buffer_percent * 0.01 * status.duration);
+                    data.put("player_buffer", bufferpos);
+                    if (isVisiblePosition(validpos))
                         mMyadapter.notifyDataSetChanged();
-                    }
                     break;
                 case MSG_ON_LOAD_RECORD_LIST_DONE:
                     mPlaying_data = (List<ContentValues>)msg.obj;
@@ -522,63 +539,51 @@ public class PlayingListActivity extends Activity {
                     itemid = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    if (isVisiblePosition(validpos)){
-                        if (isNovelMode()){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put("progress", (Integer)msg.obj);
-                            data.put(Downloader.STATUS, Downloader.STA_STARTED);
-                            mMyadapter.notifyDataSetChanged();
-                        }
-                    }
+                    data = mPlaying_data.get(validpos);
+                    data.put("progress", (Integer)msg.obj);
+                    data.put(Downloader.STATUS, Downloader.STA_STARTED);
+                    if (isVisiblePosition(validpos))
+                        mMyadapter.notifyDataSetChanged();
+
                     break;
                 case MSG_ON_DOWNLOAD_DONE:
                     itemid = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    if (isVisiblePosition(validpos)){
-                        if (isNovelMode()){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put(Downloader.STATUS, (Integer)msg.obj);
-                            mMyadapter.notifyDataSetChanged();
-                        }
-                    }
+                    data = mPlaying_data.get(validpos);
+                    data.put(Downloader.STATUS, (Integer)msg.obj);
+                    if (isVisiblePosition(validpos))
+                        mMyadapter.notifyDataSetChanged();
+
                     break;
                 case MSG_ON_DOWNLOAD_PAUSED:
                     itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
+                    data = mPlaying_data.get(validpos);
+                    data.put(Downloader.STATUS, (Integer)msg.obj);
                     if (isVisiblePosition(validpos)){
-                        if (isNovelMode()){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put(Downloader.STATUS, (Integer)msg.obj);
-                            //data.put("buttonlock", false);
-                            mMyadapter.notifyDataSetChanged();
-                        }
+                        mMyadapter.notifyDataSetChanged();
                     }
                     break;
                 case MSG_ON_DOWNLOAD_ERR:
                     itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
+                    data = mPlaying_data.get(validpos);
+                    data.put(Downloader.STATUS, (Integer)msg.obj);
                     if (isVisiblePosition(validpos)){
-                        if(isNovelMode()){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put(Downloader.STATUS, (Integer)msg.obj);
-                            mMyadapter.notifyDataSetChanged();
-                        }
+                        mMyadapter.notifyDataSetChanged();
                     }
                     break;
                 case MSG_ON_DOWNLOAD_STARTED:
                     itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
+                    data = mPlaying_data.get(validpos);
+                    data.put(Downloader.STATUS, (Integer)msg.obj);
                     if (isVisiblePosition(validpos)){
-                        if (isNovelMode()){
-                            ContentValues data = mPlaying_data.get(validpos);
-                            data.put(Downloader.STATUS, (Integer)msg.obj);
-                            //data.put("buttonlock", false);
-                            mMyadapter.notifyDataSetChanged();
-                        }
+                        mMyadapter.notifyDataSetChanged();
                     }
                     break;
                 case MSG_ON_DOWNLOAD_DELETE:

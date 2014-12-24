@@ -339,7 +339,9 @@ public class Downloader {
 
     public int pauseDownload (ContentValues downloadtask) {
         if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
-            downloadtask.put(Downloader.STATUS, Downloader.STA_PAUSED);
+            synchronized (downloadtask){
+                downloadtask.put(Downloader.STATUS, Downloader.STA_PAUSED);
+            }
             Log.v(MyConstant.TAG_DOWNLOADER, "Pause Download task!");
         }
         return 0;

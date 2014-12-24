@@ -261,8 +261,8 @@ public class PlayBackService extends Service {
     public static class Status{
         public Status(){
             status      = PlayBackService.STA_IDLE;
-            position    = 0x0;
-            duration    = 0x0;
+            //position    = 0x0;
+            //duration    = 0x0;
         }
         public boolean canStart (){
             return status == PlayBackService.STA_READY || status == PlayBackService.STA_PAUSED;
@@ -333,8 +333,8 @@ public class PlayBackService extends Service {
         public int err_what;
         public int err_extra;
         public int buffer_percent;
-        public int itemPos;
-        public int itemId;
+        public int itemPos = -1;
+        public int itemId = -1;
     }
 
     /* playback function define */
@@ -610,6 +610,17 @@ public class PlayBackService extends Service {
             if (mClient != null  && result != null){
                 try {
                     Message msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
+                    ContentValues data;
+                    // init the ui data
+                    for(int i=0; i<result.size(); ++i){
+                        data = result.get(i);
+                        data.put("item_pos",i);
+                        data.put("item_mode", 0);
+                        data.put("player_status", PlayBackService.STA_IDLE);
+                        data.put("player_curpos", 0);
+                        data.put("player_duration", 0);
+                        data.put("player_buffer", 0);
+                    }
                     msg.obj = result;
                     mClient.send(msg);
                 } catch (RemoteException e) {
@@ -618,5 +629,4 @@ public class PlayBackService extends Service {
             }
         }
     }
-
 }

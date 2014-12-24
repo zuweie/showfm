@@ -12,17 +12,21 @@
         android:id="@+id/esm_title" />
 
     <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:id="@+id/plm_item">
+        android:layout_width="wrap_content"
+        android:layout_height="@dimen/playinglist_item_height"
+        android:id="@+id/plm_item"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp">
 
         <ImageButton
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="32dp"
+            android:layout_height="match_parent"
             android:id="@+id/plm_playerbt"
             android:layout_alignParentTop="true"
             android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true" />
+            android:layout_alignParentStart="true"
+            android:background="#00ffa92d"
+            android:src="@drawable/play" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -30,16 +34,37 @@
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:text="Medium Text"
             android:id="@+id/plm_title"
+            android:singleLine="true"
             android:layout_alignParentTop="true"
             android:layout_toRightOf="@+id/plm_playerbt"
-            android:layout_toEndOf="@+id/plm_playerbt" />
+            android:layout_toEndOf="@+id/plm_playerbt"
+            android:layout_marginLeft="5dp"
+            android:textStyle="bold" />
 
         <SeekBar
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/plm_player_skb"
-            android:layout_below="@+id/plm_title"
+            android:layout_toLeftOf="@+id/plm_playtime"
+            android:layout_toStartOf="@+id/plm_playtime"
+            android:layout_below="@+id/plm_playtime"
             android:layout_alignLeft="@+id/plm_title"
-            android:layout_alignStart="@+id/plm_title" />
+            android:layout_alignStart="@+id/plm_title"
+            android:progressTint="#ffffc67c"
+            android:thumb="@drawable/thumb" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="Small Text"
+            android:id="@+id/plm_playtime"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true"
+            android:textSize="8dp"
+            android:layout_below="@+id/plm_title" />
+
+
     </RelativeLayout>
+
 </LinearLayout>
