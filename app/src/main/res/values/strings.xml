@@ -17,4 +17,7 @@
     <string name="load_data_status_api_err">api err</string>
     <string name="load_data_status_json_err">json err</string>
     <string name="load_data_start">loading data... please wait...</string>
+    <string name="nj">主播 : </string>
+    <string name="record_nj">播讲：</string>
+    <string name="record_updated">日期：</string>
 </resources>

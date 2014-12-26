@@ -30,6 +30,7 @@ public class Record extends MyData{
     public final static String UPDATED = "updated";
     public final static String NOVELID = "novel_id";
     public final static String DOWNLOADID = "download_id";
+    public final static String READ = "read";
 
     private static SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 
@@ -76,6 +77,7 @@ public class Record extends MyData{
         data.put(Record.UPDATED, cursor.getLong(cursor.getColumnIndex(Record.UPDATED)));
         data.put(Record.NOVELID, cursor.getInt(cursor.getColumnIndex(Record.NOVELID)));
         data.put(Record.DOWNLOADID, cursor.getInt(cursor.getColumnIndex(Record.DOWNLOADID)));
+        data.put(Record.READ, cursor.getInt(cursor.getColumnIndex(Record.READ)));
 
         return data;
     }

@@ -6,6 +6,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.drm.DrmStore;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -23,6 +24,7 @@ import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -30,7 +32,11 @@ import android.widget.TextView;
 
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
 
+import org.w3c.dom.Text;
+
 import java.security.NoSuchAlgorithmException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 
@@ -290,13 +296,21 @@ public class PlayingListActivity extends Activity {
                 LayoutInflater inflater = PlayingListActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.playlist_item, null);
                 holder = new Holder();
+
+                // easy mode
+                holder.esm = convertView.findViewById(R.id.esm_item);
                 holder.esm_title = (TextView)convertView.findViewById(R.id.esm_title);
+                holder.esm_status = (ImageView)convertView.findViewById(R.id.esm_status);
+
+                // playing mode
                 holder.plm = convertView.findViewById(R.id.plm_item);
-                holder.plm_playtime = (TextView)convertView.findViewById(R.id.plm_playtime);
-                holder.plm_playerbt = (ImageButton)convertView.findViewById(R.id.plm_playerbt);
+
                 holder.plm_title = (TextView)convertView.findViewById(R.id.plm_title);
+                holder.plm_rec_nj = (TextView)convertView.findViewById(R.id.plm_rec_nj);
+                //holder.plm_rec_updated = (TextView)convertView.findViewById(R.id.plm_rec_updated);
+                holder.plm_rec_timer = (TextView)convertView.findViewById(R.id.plm_rec_timer);
+
                 holder.plm_seekbar = (SeekBar)convertView.findViewById(R.id.plm_player_skb);
-                //holder.plm_seekbar.setIndeterminate(false);
                 holder.plm_seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
                     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -324,6 +338,7 @@ public class PlayingListActivity extends Activity {
 
                     }
                 });
+                holder.plm_playerbt = (ImageButton)convertView.findViewById(R.id.plm_playerbt);
                 holder.plm_playerbt.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -390,13 +405,22 @@ public class PlayingListActivity extends Activity {
             // ui update
             if (isNovelMode()){
                 if (data.getAsInteger("item_mode") == 1){
+
+                    holder.esm.setVisibility(View.GONE);
                     // playback mode
-                    holder.esm_title.setVisibility(View.GONE);
                     holder.plm.setVisibility(View.VISIBLE);
                     holder.plm_playerbt.setTag(data);
                     holder.plm_seekbar.setTag(data);
                     //
                     holder.plm_title.setText(data.getAsString(Record.NAME));
+                    holder.plm_rec_nj.setText(data.getAsString(Record.NJNAME));
+
+                    int lefttime = data.getAsInteger("player_duration") - data.getAsInteger("player_curpos");
+                    if (lefttime != 0) {
+                        String playtime = "- " + coverMs2Str(lefttime);
+                        holder.plm_rec_timer.setText(playtime);
+                    }else
+                        holder.plm_rec_timer.setText("-00:00");
 
                     // set imgb here
                     if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
@@ -408,22 +432,34 @@ public class PlayingListActivity extends Activity {
                         holder.plm_playerbt.setImageResource(R.drawable.play);
                     }else if (data.getAsInteger("player_status") == PlayBackService.STA_STARTED){
                         holder.plm_playerbt.setImageResource(R.drawable.pause);
+                    }else if (data.getAsInteger("player_status") == PlayBackService.STA_PREPARING){
+                        holder.plm_playerbt.setImageResource(R.drawable.play_in_perpare);
                     }
 
                     holder.plm_seekbar.setMax(data.getAsInteger("player_duration"));
                     holder.plm_seekbar.setProgress(data.getAsInteger("player_curpos"));
                     holder.plm_seekbar.setSecondaryProgress(data.getAsInteger("player_buffer"));
-                    int lefttime = data.getAsInteger("player_duration") - data.getAsInteger("player_curpos");
-                    String playtime = "- "+coverMs2Str(lefttime);
-                    holder.plm_playtime.setText(playtime);
+
 
                 }else{
                     // easy mode
-                    holder.esm_title.setVisibility(View.VISIBLE);
+
+                    holder.esm.setVisibility(View.VISIBLE);
+
                     holder.esm_title.setText(data.getAsString(Record.NAME));
+                    if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
+                        if (data.getAsInteger(Record.READ) == 0)
+                            holder.esm_status.setImageResource(R.drawable.esm_unread);
+                        else
+                            holder.esm_status.setImageResource(R.drawable.esm_read);
+                    }else if (data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                        holder.esm_status.setImageResource(R.drawable.esm_play_err);
+                    }else{
+                        holder.esm_status.setImageResource(R.drawable.esm_play);
+                    }
+
                     holder.plm.setVisibility(View.GONE);
-                    holder.plm_playerbt.setTag(data);
-                    //
+
                     //holder.plm_title.setText(data.getAsString(Record.NAME));
                 }
             }
@@ -431,12 +467,18 @@ public class PlayingListActivity extends Activity {
         }
 
         class Holder {
+            View esm;
             View plm;
             TextView esm_title;
+            ImageView esm_status;
+
             TextView plm_title;
             ImageButton plm_playerbt;
             SeekBar plm_seekbar;
-            TextView plm_playtime;
+            TextView plm_rec_nj;
+            TextView plm_rec_updated;
+            TextView plm_rec_timer;
+           // TextView plm_playtime;
         }
 
         //public Integer mExtendItemPos = 0;
@@ -504,9 +546,14 @@ public class PlayingListActivity extends Activity {
                             mMyadapter.notifyDataSetChanged();
 
                     }else if (status.status == PlayBackService.STA_PREPARING){
-
+                        itemid = status.itemId;
+                        itempos = status.itemPos;
+                        validpos = getValidPos(itemid, itempos);
+                        data = mPlaying_data.get(validpos);
+                        data.put("player_status", (Integer)status.status);
+                        if (isVisiblePosition(validpos))
+                            mMyadapter.notifyDataSetChanged();
                     }
-
                     break;
                 case MSG_ON_MP3PROGRESS_UPDTED:
                     status = (PlayBackService.Status) msg.obj;

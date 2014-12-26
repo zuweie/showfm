@@ -11,6 +11,7 @@ public class MyConstant {
     public final static String TAG_RECORD_API  = "record_api";
     public final static String TAG_PLAYBACK   = "playback";
     public final static String TAG_DOWNLOADER = "downloader";
+    public final static String TAG_NOVEL = "novel";
     /*ERROR CODE*/
 
     /*ERROR MSG*/

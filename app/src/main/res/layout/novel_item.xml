@@ -1,20 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:weightSum="1">
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <ImageView
-        android:layout_width="64dp"
-        android:layout_height="64dp"
+        android:layout_width="120dp"
+        android:layout_height="180dp"
         android:id="@+id/nvl_img_view"
-        android:layout_gravity="center_horizontal" />
+        android:layout_gravity="center_horizontal"
+        android:layout_alignParentTop="true"
+        android:layout_alignLeft="@+id/nvl_text_view"
+        android:layout_alignStart="@+id/nvl_text_view"
+        android:layout_marginTop="15dp" />
+
+    <TextView
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Small Text Small Text Small Text Small Text Small Text"
+        android:id="@+id/nvl_text_view"
+        android:layout_gravity="center_horizontal"
+        android:textIsSelectable="false"
+        android:textStyle="bold"
+        android:textSize="15dp"
+        android:textColor="#ff4200b9"
+        android:singleLine="true"
+        android:layout_below="@+id/nvl_img_view"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp" />
+
+    <ImageView
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:id="@+id/nvl_new_img"
+        android:layout_alignParentTop="true"
+        android:layout_alignLeft="@+id/nvl_img_view"
+        android:layout_alignStart="@+id/nvl_img_view"
+        android:background="@drawable/novel_new"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="@string/nj"
+        android:id="@+id/nvl_nj_text"
+        android:layout_alignLeft="@+id/nvl_text_view"
+        android:layout_alignStart="@+id/nvl_text_view"
+        android:layout_below="@+id/nvl_text_view"
+        android:textSize="12dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:text="Small Text"
-        android:id="@+id/nvl_text_view"
-        android:layout_gravity="center_horizontal" />
-</LinearLayout>
+        android:id="@+id/nvl_nj"
+        android:layout_toRightOf="@+id/nvl_nj_text"
+        android:layout_toEndOf="@+id/nvl_nj_text"
+        android:textSize="13dp"
+        android:textStyle="bold"
+        android:layout_marginLeft="8dp"
+        android:layout_below="@+id/nvl_text_view"
+        android:textColor="#ff2b266d" />
+</RelativeLayout>

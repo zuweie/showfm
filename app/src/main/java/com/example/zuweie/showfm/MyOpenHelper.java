@@ -42,7 +42,8 @@ public class MyOpenHelper extends SQLiteOpenHelper{
                                                   + Record.URL + " TEXT DEFAULT NULL, "
                                                   + Record.NOVELID + " INTEGER, "
                                                   + Record.DOWNLOADID + " INTEGER DEFAULT -1, "
-                                                  + Record.UPDATED + " UNSIGNED BIG INT DEFAULT 0 "
+                                                  + Record.UPDATED + " UNSIGNED BIG INT DEFAULT 0, "
+                                                  + Record.READ + " INTEGER DEFAULT 0 "
                                                   + " ); ";
 
     private final static String SQL_CREATE_DOWNLOAD = " CREATE TABLE " + Downloader.TAB + " ( "
