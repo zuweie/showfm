@@ -14,6 +14,7 @@ import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
 import android.util.Log;
+import android.util.SparseArray;
 
 import org.json.JSONException;
 
@@ -27,7 +28,8 @@ import java.util.TimerTask;
 public class PlayBackService extends Service {
 
     private Messenger mMessenger = null;
-    private Messenger mClient = null;
+    //private Messenger mClient = null;
+    private SparseArray <Messenger> mClients = null;
     private MediaPlayer mPlayback = null;
 
     /* Msg define */
@@ -35,11 +37,12 @@ public class PlayBackService extends Service {
     public final static int MSG_LOGOUT = 0x2;
     public final static int MSG_PLAY = 0X3;
     public final static int MSG_START = 0x4;
-    public final static int MSG_PAUSED = 0X5;
+    public final static int MSG_PAUSE = 0X5;
     public final static int MSG_SEEKTO = 0x6;
     public final static int MSG_LOAD_RECORD_LIST = 0x7;
     public final static int MSG_START_DOWNLOAD_REC = 0x8;
     public final static int MSG_PAUSE_DOWNLOAD_REC = 0x9;
+    public final static int MSG_CURRENT_STATUS =    0x10;
 
     /* status define */
     public final static int STA_IDLE = 0x0;
@@ -76,7 +79,7 @@ public class PlayBackService extends Service {
                 stopUpdater();
                 mMp3Status.err_extra = extra;
                 mMp3Status.err_what  = what;
-                mMp3Status.updateStatus(PlayBackService.STA_ERROR,  mClient);
+                mMp3Status.updateStatus(PlayBackService.STA_ERROR,  mClients);
                 return false;
             }
         });
@@ -87,7 +90,7 @@ public class PlayBackService extends Service {
             public void onBufferingUpdate(MediaPlayer mp, int percent) {
                 if (percent - mMp3Status.buffer_percent > 4){
                     mMp3Status.buffer_percent = percent;
-                    mMp3Status.updateMP3BufferProgress(mClient);
+                    mMp3Status.updateMP3BufferProgress(mClients);
                     Log.v(MyConstant.TAG_PLAYBACK, "Updated buffer percent : " + percent);
                 }
             }
@@ -97,7 +100,7 @@ public class PlayBackService extends Service {
         mPlayback.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                mMp3Status.updateStatus(PlayBackService.STA_READY, mClient);
+                mMp3Status.updateStatus(PlayBackService.STA_READY, mClients);
             }
         });
 
@@ -123,7 +126,7 @@ public class PlayBackService extends Service {
 
         mDownloadtask = new LinkedList<ContentValues>();
 
-        //mPlayerProgressUpdater = new Timer();
+        mClients = new SparseArray<Messenger>();
 
         return START_STICKY;
     }
@@ -159,7 +162,7 @@ public class PlayBackService extends Service {
 
             mPlayback.setDataSource(PlayBackService.this, Uri.parse(uri));
             mPlayback.prepareAsync();
-            mMp3Status.updateStatus(PlayBackService.STA_PREPARING, mClient);
+            mMp3Status.updateStatus(PlayBackService.STA_PREPARING, mClients);
 
         } catch (IOException e) {
             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
@@ -175,7 +178,7 @@ public class PlayBackService extends Service {
 
             mPlayback.setDataSource(url);
             mPlayback.prepareAsync();
-            mMp3Status.updateStatus(PlayBackService.STA_PREPARING,mClient);
+            mMp3Status.updateStatus(PlayBackService.STA_PREPARING,mClients);
         } catch (IOException e) {
             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
         }
@@ -185,7 +188,7 @@ public class PlayBackService extends Service {
     private void start() {
         if (mMp3Status.canStart()) {
             mPlayback.start();
-            mMp3Status.updateStatus(PlayBackService.STA_STARTED, mClient);
+            mMp3Status.updateStatus(PlayBackService.STA_STARTED, mClients);
         }
     }
 
@@ -193,7 +196,7 @@ public class PlayBackService extends Service {
         if (mMp3Status.canPaused()){
             if (mMp3Status.canPaused()){
                 mPlayback.pause();
-                mMp3Status.updateStatus(PlayBackService.STA_PAUSED, mClient);
+                mMp3Status.updateStatus(PlayBackService.STA_PAUSED, mClients);
             }
         }
     }
@@ -224,13 +227,12 @@ public class PlayBackService extends Service {
                 if (mMp3Status.status == PlayBackService.STA_STARTED && mMp3Status.canGetPostion()){
                     mMp3Status.position = mPlayback.getCurrentPosition();
                     mMp3Status.duration = mPlayback.getDuration();
-                    mMp3Status.updateMP3Progress(mClient);
+                    mMp3Status.updateMP3Progress(mClients);
                 }
 
             }
         }, 500, 1000);
     }
-
     public void stopUpdater() {
         if (mPlayerProgressUpdater != null)
             mPlayerProgressUpdater.cancel();
@@ -238,6 +240,34 @@ public class PlayBackService extends Service {
     }
 
 
+    public void addClient(int key, Messenger client){
+        synchronized (mClients) {
+            mClients.put(key, client);
+        }
+    }
+
+    public void removeClient(int key){
+        synchronized (mClients){
+            mClients.remove(key);
+        }
+
+    }
+
+    public static void sendMessage(Message msg, SparseArray<Messenger> clients){
+        synchronized (clients){
+            for(int i=0; i<clients.size(); ++i){
+                try {
+                    clients.valueAt(i).send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                }
+            }
+        }
+    }
+
+    public static void sendMessage2Client(Message msg, SparseArray<Message>clients, int key){
+
+    }
 
     private ContentValues createDownloadTaskById(int id){
         Downloader downloader = new Downloader();
@@ -278,18 +308,13 @@ public class PlayBackService extends Service {
         }
 
 
-        public void updateStatus (Integer status, Messenger client){
+        public void updateStatus (Integer status, SparseArray<Messenger> clients){
             if (status != null)
                 this.status = status;
-            if (client != null){
-                try {
-                    Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3STA_UPDATE);
-                    msg.obj = mMp3Status;
-                    client.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
-                }
-            }
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3STA_UPDATE);
+            msg.obj = mMp3Status;
+            sendMessage(msg, clients);
+            //clients.valueAt(i).send(msg);
         }
 
         public void updateStatus () {
@@ -301,30 +326,20 @@ public class PlayBackService extends Service {
             this.buffer_percent = 0;
             this.itemId = -1;
             this.itemPos = -1;
+            this.playMode = -1;
+            this.novelId = -1;
         }
 
-        public void updateMP3Progress (Messenger client){
-            if (client != null){
-                try{
-                    Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3PROGRESS_UPDTED);
-                    msg.obj = mMp3Status;
-                    client.send(msg);
-                }catch (RemoteException e){
-                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
-                }
-            }
+        public void updateMP3Progress (SparseArray<Messenger> clients){
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3PROGRESS_UPDTED);
+            msg.obj = mMp3Status;
+            sendMessage(msg, clients);
         }
 
-        public void updateMP3BufferProgress(Messenger client){
-            if (client != null){
-                try {
-                    Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3BUFFERING_UPDATED);
-                    msg.obj = mMp3Status;
-                    client.send(msg);
-                }catch (RemoteException e){
-                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
-                }
-            }
+        public void updateMP3BufferProgress(SparseArray<Messenger> clients){
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3BUFFERING_UPDATED);
+            msg.obj = mMp3Status;
+            sendMessage(msg, clients);
         }
         public int status;
         //public String title;
@@ -335,6 +350,8 @@ public class PlayBackService extends Service {
         public int buffer_percent;
         public int itemPos = -1;
         public int itemId = -1;
+        public int playMode = MyConstant.PM_NOVEL;
+        public int novelId = -1;
     }
 
     /* playback function define */
@@ -345,10 +362,12 @@ public class PlayBackService extends Service {
             ContentValues downloadtask = null;
             switch (msg.what){
                 case MSG_LOGIN:
-                    mClient = msg.replyTo;
+                    //mClient = msg.replyTo;
+                    addClient(msg.arg1, msg.replyTo);
                     break;
                 case MSG_LOGOUT:
-                    mClient = null;
+                    //mClient = null;
+                    removeClient(msg.arg1);
                     stopUpdater();
                     break;
                 case MSG_PLAY:
@@ -362,22 +381,29 @@ public class PlayBackService extends Service {
                     break;
                 case MSG_START:
                     start();
-                    startUpdater();
+                    if (msg.arg1 == 1) {
+                        startUpdater();
+                    }
                     break;
-                case MSG_PAUSED:
+                case MSG_PAUSE:
                     paused();
                     stopUpdater();
                     break;
                 case MSG_SEEKTO:
                     seekTo(msg.arg1);
                     break;
+                case MSG_CURRENT_STATUS:
+                    Message rmsg = Message.obtain(null, PlayingListActivity.MSG_ON_CURRENT_STATUS);
+                    rmsg.obj = mMp3Status;
+                    PlayBackService.sendMessage(rmsg, mClients);
+                    break;
                 case MSG_LOAD_RECORD_LIST:
                     if (mDoingWhat.getLoadingRec() == false){
                         new GetRecordListTask().execute(msg.arg1);
                     }
                     break;
-                case MSG_START_DOWNLOAD_REC:
 
+                case MSG_START_DOWNLOAD_REC:
                     downloadid = (Integer)msg.obj;
                     if (downloadid > 0) {
                         // find the downloader first
@@ -391,8 +417,8 @@ public class PlayBackService extends Service {
                     }else{
                         Log.e(MyConstant.TAG_DOWNLOADER, "had not create the download task!");
                     }
-
                     break;
+
                 case MSG_PAUSE_DOWNLOAD_REC:
                     downloadid = (Integer)msg.obj;
                     downloadtask = removeDownloadTaskById(downloadid);
@@ -405,6 +431,7 @@ public class PlayBackService extends Service {
             }
         }
     }
+
 
     class DownloadTask extends AsyncTask<Integer, Integer, Integer>
                         implements Downloader.OnProgressListener
@@ -421,14 +448,8 @@ public class PlayBackService extends Service {
 
         @Override
         protected void onPreExecute(){
-            if (mClient != null){
-                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_READY_DOWNLOAD);
-                try {
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                }
-            }
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_READY_DOWNLOAD);
+            sendMessage(msg, mClients);
         }
 
         @Override
@@ -452,31 +473,25 @@ public class PlayBackService extends Service {
         @Override
         protected void onPostExecute (Integer result){
             int status = downloadtask.getAsInteger(Downloader.STATUS);
-            if (mClient != null){
-                Message msg = null;
-                switch(status){
-                    case Downloader.STA_DONE:
-                        msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DONE);
-                        break;
-                    case Downloader.STA_PAUSED:
-                        msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PAUSED);
-                        break;
-                    case Downloader.STA_ERR:
-                        msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_ERR);
-                        break;
-                    default:
-                        super.onPostExecute(result);
-                }
-                if (msg != null){
-                    try {
-                        msg.arg1 = itemId;
-                        msg.arg2 = itemPos;
-                        msg.obj = (Integer)status;
-                        mClient.send(msg);
-                    } catch (RemoteException e) {
-                        Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                    }
-                }
+            Message msg = null;
+            switch(status){
+                case Downloader.STA_DONE:
+                    msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DONE);
+                    break;
+                case Downloader.STA_PAUSED:
+                    msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PAUSED);
+                    break;
+                case Downloader.STA_ERR:
+                    msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_ERR);
+                    break;
+                default:
+                    super.onPostExecute(result);
+            }
+            if (msg != null){
+                msg.arg1 = itemId;
+                msg.arg2 = itemPos;
+                msg.obj = (Integer)status;
+                sendMessage(msg, mClients);
             }
             // at last remove the the download task from list
             mDownloadtask.remove(downloadtask);
@@ -484,18 +499,12 @@ public class PlayBackService extends Service {
 
         @Override
         protected void onProgressUpdate(Integer... values){
-            if (mClient != null){
-                int percent = values[0];
-                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PROGRESS);
-                msg.obj = percent;
-                msg.arg1 = itemId;
-                msg.arg2 = itemPos;
-                try {
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                }
-            }
+            int percent = values[0];
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PROGRESS);
+            msg.obj = percent;
+            msg.arg1 = itemId;
+            msg.arg2 = itemPos;
+            sendMessage(msg, mClients);
         }
 
         @Override
@@ -507,63 +516,39 @@ public class PlayBackService extends Service {
         @Override
         public void onDownloadDoneUpdate() {
             // not a UI thread try it
-            if (mClient!=null){
-                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DONE);
-                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
-                msg.arg1 = itemId;
-                msg.arg2 = itemPos;
-                try {
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                }
-            }
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DONE);
+            msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+            msg.arg1 = itemId;
+            msg.arg2 = itemPos;
+            sendMessage(msg, mClients);
         }
 
         @Override
         public void onDownloadPauseUpdate() {
             // not a UI thread
-            if (mClient!=null){
-                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PAUSED);
-                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
-                msg.arg1 = itemId;
-                msg.arg2 = itemPos;
-                try {
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                }
-            }
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PAUSED);
+            msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+            msg.arg1 = itemId;
+            msg.arg2 = itemPos;
+            sendMessage(msg, mClients);
         }
 
         @Override
         public void onDownloadErrUpdate() {
-            if (mClient!=null){
-                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_ERR);
-                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
-                msg.arg1 = itemId;
-                msg.arg2 = itemPos;
-                try {
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                }
-            }
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_ERR);
+            msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+            msg.arg1 = itemId;
+            msg.arg2 = itemPos;
+            sendMessage(msg, mClients);
         }
 
         @Override
         public void onDownloadStartedUpdate() {
-            if (mClient!=null){
-                Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_STARTED);
-                msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
-                msg.arg1 = itemId;
-                msg.arg2 = itemPos;
-                try {
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
-                }
-            }
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_STARTED);
+            msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+            msg.arg1 = itemId;
+            msg.arg2 = itemPos;
+            sendMessage(msg, mClients);
         }
 
         int itemId;
@@ -583,14 +568,14 @@ public class PlayBackService extends Service {
             //List<ContentValues> datas;
             Record record = new Record();
             // load the update form api
-            String date = record.getMark(PlayBackService.this);
-            String api = "http://www.showfm.net/api/record.asp?after="+date+"&perpage=9999&novel_id="+novelid;
+            String date = Myfunc.ltime2Sdate(record.getMark(PlayBackService.this, novelid));
+            String api = "http://www.showfm.net/api/record.asp?after="+Uri.encode(date)+"&perpage=9999&novel_id="+novelid;
             List<ContentValues> newdatas = null;
             try {
                 newdatas = record.getData(api);
                 if (!newdatas.isEmpty()){
                     record.saveData(PlayBackService.this, newdatas);
-                    record.setMark(PlayBackService.this);
+                    record.setMark(PlayBackService.this, novelid);
                 }
                 // load the data from database;
                 newdatas = record.loadDataByNovelId(PlayBackService.this, novelid);
@@ -607,25 +592,21 @@ public class PlayBackService extends Service {
 
         @Override
         protected void onPostExecute (List<ContentValues> result){
-            if (mClient != null  && result != null){
-                try {
-                    Message msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
-                    ContentValues data;
-                    // init the ui data
-                    for(int i=0; i<result.size(); ++i){
-                        data = result.get(i);
-                        data.put("item_pos",i);
-                        data.put("item_mode", 0);
-                        data.put("player_status", PlayBackService.STA_IDLE);
-                        data.put("player_curpos", 0);
-                        data.put("player_duration", 0);
-                        data.put("player_buffer", 0);
-                    }
-                    msg.obj = result;
-                    mClient.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+            if (result != null){
+                Message msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
+                ContentValues data;
+                // init the ui data
+                for(int i=0; i<result.size(); ++i){
+                    data = result.get(i);
+                    data.put("item_pos",i);
+                    data.put("item_mode", 0);
+                    data.put("player_status", PlayBackService.STA_IDLE);
+                    data.put("player_curpos", 0);
+                    data.put("player_duration", 0);
+                    data.put("player_buffer", 0);
                 }
+                msg.obj = result;
+                sendMessage(msg, mClients);
             }
         }
     }

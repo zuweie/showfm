@@ -1,14 +1,21 @@
 package com.example.zuweie.showfm;
 
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -24,9 +31,7 @@ import android.widget.TextView;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshGridView;
 
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -35,11 +40,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class MainActivity extends Activity {
 
@@ -47,8 +51,39 @@ public class MainActivity extends Activity {
     private PullToRefreshGridView mPullToRefreshGridView;
     private GridView mGridView;
     private List<ContentValues> mNovel_data = null;
-    private final static String strNovelapi = "http://www.showfm.net/api/novel.asp";
     private MyAdapter mAdapter;
+    private MenuItem mPlaybackItem;
+
+    /* service data */
+    private Messenger mPlayback = null;
+    private Messenger mItself = null;
+    //private boolean mBindService = false;
+    private ServiceConnection mConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mPlayback = new Messenger(service);
+            //mBindService = true;
+
+            try{
+                Message msg = Message.obtain(null, PlayBackService.MSG_LOGIN);
+                msg.replyTo = mItself;
+                // client id;
+                msg.arg1 = 1;
+
+                mPlayback.send(msg);
+
+                msg = Message.obtain(null, PlayBackService.MSG_CURRENT_STATUS);
+                mPlayback.send(msg);
+            }catch (RemoteException e){
+                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {}
+    };
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +95,7 @@ public class MainActivity extends Activity {
         mNovel_data = novel.loadData(this, null, null, null, "updated desc");
 
         // Init the Ui data
+        this.getActionBar().setHomeButtonEnabled(true);
         String coverfolder = this.getFilesDir().getAbsolutePath();
         List<ContentValues> loadCoverParams = new ArrayList<ContentValues>();
 
@@ -86,11 +122,12 @@ public class MainActivity extends Activity {
         }
 
         // if some cover need to load then create the load task to load it
-        if (loadCoverParams != null && !loadCoverParams.isEmpty()){
-            new GetNovelCoverTask().execute(loadCoverParams);
+        if (!loadCoverParams.isEmpty()){
+            new GetNovelCoverTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,loadCoverParams);
+            //new GetNovelCoverTask().execute(loadCoverParams);
         }
-        // fuck
 
+        mItself = new Messenger(new MainHandler());
         /* Start the PlaybackService*/
         Intent it = new Intent(MainActivity.this, PlayBackService.class);
         startService(it);
@@ -118,7 +155,7 @@ public class MainActivity extends Activity {
         mPullToRefreshGridView.setOnRefreshListener(new PullToRefreshBase.OnRefreshListener2<GridView>() {
             @Override
             public void onPullDownToRefresh(PullToRefreshBase<GridView> refreshView) {
-
+                new RefreshNovelTask().execute();
             }
 
             @Override
@@ -130,6 +167,30 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStart(){
+        super.onStart();
+    }
+
+    @Override
+    protected void onResume (){
+        super.onResume();
+        bs();
+    }
+
+    @Override
+    protected void onPause () {
+        ubs();
+        super.onPause();
+
+    }
+
+    @Override
+    protected void onStop(){
+        super.onStop();
+    }
+
+
+    @Override
     protected void onDestroy() {
 
         /* stop the PlayBackService */
@@ -137,12 +198,16 @@ public class MainActivity extends Activity {
         stopService(it);
         /* stop the PlayBackService */
         super.onDestroy();
+
+        //System.exit(0);
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        mPlaybackItem = menu.findItem(R.id.action_play);
+        mPlaybackItem.setVisible(false);
         return true;
     }
 
@@ -154,11 +219,60 @@ public class MainActivity extends Activity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        if (id == android.R.id.home){
+            this.moveTaskToBack(false);
+        }else if (id == R.id.action_exit){
+            this.finish();
+        }else if (id == R.id.action_play){
+            if (mPlayback != null){
+                Integer status = item.getIntent().getIntExtra("player_status", -1);
+                try{
+                    Message msg = null;
+                    if (status == PlayBackService.STA_STARTED){
+                        msg = Message.obtain(null, PlayBackService.MSG_PAUSE);
+                    }else if (status == PlayBackService.STA_PAUSED){
+                        msg = Message.obtain(null, PlayBackService.MSG_START);
+                        // do not start player progress updater
+                        msg.arg1 = 0;
+                    }
+                    mPlayback.send(msg);
+                }catch (RemoteException e){
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                }
+            }
         }
-
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed(){
+        this.moveTaskToBack(false);
+        return;
+    }
+
+    public boolean connectService(){
+        return mPlayback != null;
+    }
+
+    public void bs (){
+        if (!connectService()){
+            Intent it = new Intent(MainActivity.this, PlayBackService.class);
+            bindService(it, mConnection, Context.BIND_AUTO_CREATE);
+        }
+    }
+    public void ubs (){
+        if (connectService()){
+            Message msg = Message.obtain(null, PlayBackService.MSG_LOGOUT);
+            msg.arg1 = 1;
+            try {
+                mPlayback.send(msg);
+            } catch (RemoteException e) {
+                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+            }
+            unbindService(mConnection);
+            mPlayback = null;
+            //mBindService = false;
+        }
     }
 
     private int getValiPos(int itemid, int itempos){
@@ -177,6 +291,71 @@ public class MainActivity extends Activity {
         }
         return -1;
     }
+    private void updateActionBarMenu(int what){
+
+        switch(what){
+            case PlayBackService.STA_STARTED:
+                mPlaybackItem.setIcon(R.drawable.actionbar_pause);
+                if (mPlaybackItem.getIntent() == null){
+                    mPlaybackItem.setIntent(new Intent());
+                }
+                mPlaybackItem.getIntent().putExtra("player_status", PlayBackService.STA_STARTED);
+                mPlaybackItem.setVisible(true);
+                break;
+            case PlayBackService.STA_PAUSED:
+                mPlaybackItem.setIcon(R.drawable.actionbar_start);
+                if (mPlaybackItem.getIntent() == null){
+                    mPlaybackItem.setIntent(new Intent());
+                }
+                mPlaybackItem.getIntent().putExtra("player_status", PlayBackService.STA_PAUSED);
+                mPlaybackItem.setVisible(true);
+                break;
+            default:
+                mPlaybackItem.setVisible(false);
+        }
+        return;
+    }
+
+    private class RefreshNovelTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+
+            Novel novel = new Novel();
+            String date = Myfunc.ltime2Sdate(novel.getMark(MainActivity.this));
+            String api = "http://www.showfm.net/api/novel.asp?after="+Uri.encode(date)+"state0=1&state1=2";
+
+            try {
+                List<ContentValues> datas = novel.getData(api);
+                if (datas != null && !datas.isEmpty()) {
+                    novel.saveData(MainActivity.this, datas);
+                    novel.setMark(MainActivity.this);
+                    List<ContentValues> vs = new ArrayList<ContentValues>();
+
+                    for(int i=0; i<datas.size(); ++i){
+                        ContentValues v = new ContentValues();
+                        ContentValues data = datas.get(i);
+                        v.put(Novel.ID, data.getAsInteger(Novel.ID));
+                        v.put(Novel.UPDATED, data.getAsInteger(Novel.UPDATED));
+                        vs.add(v);
+                    }
+                    novel.updataNovelDate(MainActivity.this, vs);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result){
+            mPullToRefreshGridView.onRefreshComplete();
+            mAdapter.notifyDataSetChanged();
+        }
+    }
+
     private class GetNovelCoverTask extends AsyncTask <List<ContentValues>, Void, Integer> {
 
         @Override
@@ -205,22 +384,6 @@ public class MainActivity extends Activity {
                     connection.setRequestProperty("Charset", "UTF-8");
                     connection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)");
                     connection.setRequestProperty("Connection", "Keep-Alive");
-
-
-                    /*
-                    in = new BufferedInputStream(connection.getInputStream());
-                    out = new BufferedOutputStream(bos);
-
-                    // load it from net work
-
-                    int readsz = 0;
-                    while((readsz = in.read(buffer))>0){
-                        out.write(buffer,0, readsz);
-                    }
-
-                    // check if need to compress the bitmap
-                    byte[] bmdata = bos.toByteArray();
-                     */
 
                     //Bitmap bitmap = BitmapFactory.decodeByteArray(bmdata, 0, bmdata.length);
                     Bitmap bitmap = BitmapFactory.decodeStream(connection.getInputStream());
@@ -305,7 +468,25 @@ public class MainActivity extends Activity {
         }
     }
 
-    private class MyAdapter extends BaseAdapter {
+    class MainHandler extends Handler {
+        @Override
+        public void handleMessage(Message msg){
+            PlayBackService.Status status = null;
+            switch(msg.what){
+                case PlayingListActivity.MSG_ON_CURRENT_STATUS:
+                case PlayingListActivity.MSG_ON_MP3STA_UPDATE:
+                    // TODO : update icon of the actionbar
+                    status = (PlayBackService.Status)msg.obj;
+                    updateActionBarMenu(status.status);
+                    break;
+                default:
+                super.handleMessage(msg);
+            }
+
+        }
+    }
+
+    class MyAdapter extends BaseAdapter {
 
         private Context context;
         class Holder {
@@ -342,6 +523,7 @@ public class MainActivity extends Activity {
                 LayoutInflater inflater = MainActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.novel_item, null);
                 holder = new Holder();
+
                 holder.new_image = (ImageView)convertView.findViewById(R.id.nvl_new_img);
                 holder.imageView = (ImageView)convertView.findViewById(R.id.nvl_img_view);
                 holder.textView  = (TextView)convertView.findViewById(R.id.nvl_text_view);
@@ -356,6 +538,13 @@ public class MainActivity extends Activity {
             String name = data.getAsInteger(Novel.ID) + "." +data.getAsString(Novel.NAME);
             holder.textView.setText(name);
             holder.nvl_nj.setText(data.getAsString(Novel.NJNAME));
+
+            if (position <= 4){
+                holder.new_image.setVisibility(View.VISIBLE);
+            }else{
+                holder.new_image.setVisibility(View.GONE);
+            }
+
             //holder.imageView.setImageResource(R.drawable.nvl_default);
             if (data.getAsBoolean("cover_exists")){
                 if (data.get("cover_uri") == null){

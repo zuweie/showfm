@@ -30,6 +30,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 
+import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
 
 import org.w3c.dom.Text;
@@ -73,9 +74,11 @@ public class PlayingListActivity extends Activity {
                 // log to service
                 Message msg = Message.obtain(null, PlayBackService.MSG_LOGIN);
                 msg.replyTo = mItSelf;
+                msg.arg1 = 2;
                 mPlayback.send(msg);
 
                 // post request to get Record list
+                // TODO : check if it need to load on net word;
                 if (isNovelMode()){
                     msg = Message.obtain(null, PlayBackService.MSG_LOAD_RECORD_LIST);
                     msg.arg1 = mNovelId;
@@ -106,6 +109,7 @@ public class PlayingListActivity extends Activity {
     public final static int MSG_ON_EXTEND_ITEM = 0x10;
     public final static int MSG_ON_MP3PROGRESS_UPDTED = 0x11;
     public final static int MSG_ON_MP3BUFFERING_UPDATED = 0x12;
+    public final static int MSG_ON_CURRENT_STATUS = 0x13;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -122,8 +126,20 @@ public class PlayingListActivity extends Activity {
 
         /* init the UI */
         //mHandler = new PlayingListHandler();
+        this.getActionBar().setHomeButtonEnabled(true);
         mItSelf = new Messenger(new PlayingListHandler());
         mPullToRefreshListView = (PullToRefreshListView)this.findViewById(R.id.playing_list);
+        mPullToRefreshListView.setOnRefreshListener(new PullToRefreshBase.OnRefreshListener2<ListView>() {
+            @Override
+            public void onPullDownToRefresh(PullToRefreshBase<ListView> refreshView) {
+
+            }
+
+            @Override
+            public void onPullUpToRefresh(PullToRefreshBase<ListView> refreshView) {
+
+            }
+        });
         mPlayinglistView = mPullToRefreshListView.getRefreshableView();
         mMyadapter = new MyAdapter();
         mPlayinglistView.setAdapter(mMyadapter);
@@ -177,12 +193,24 @@ public class PlayingListActivity extends Activity {
     @Override
     protected void onStart(){
         super.onStart();
-        bs();
+
     }
 
     @Override
-    protected void onStop(){
+    protected void onResume (){
+        bs();
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause () {
         ubs();
+        super.onPause();
+    }
+
+
+    @Override
+    protected void onStop(){
         super.onStop();
     }
 
@@ -201,10 +229,16 @@ public class PlayingListActivity extends Activity {
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
+        /*
         if (id == R.id.action_settings) {
             return true;
+        }else if ((int)id != (int)android.R.id.home){
+            return true;
         }
-
+        */
+        if (id == android.R.id.home){
+            this.finish();
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -218,6 +252,7 @@ public class PlayingListActivity extends Activity {
     private void ubs(){
         if (mBindService){
             Message msg = Message.obtain(null, PlayBackService.MSG_LOGOUT);
+            msg.arg1 = 2;
             try {
                 mPlayback.send(msg);
             } catch (RemoteException e) {
@@ -354,7 +389,6 @@ public class PlayingListActivity extends Activity {
 
                                     int validpos = getValidPos(mLastPlayItemID, mLastPlayItemPos);
                                     if (validpos >= 0){
-
                                         ContentValues lastdata = mPlaying_data.get(validpos);
                                         lastdata.put("item_mode", 0);
                                         lastdata.put("player_status", PlayBackService.STA_IDLE);
@@ -377,8 +411,7 @@ public class PlayingListActivity extends Activity {
                                     ||rdata.getAsInteger("player_status") == PlayBackService.STA_COMPLETED) {
                                 // Status of paused, start it
                                 Message msg = Message.obtain(null, PlayBackService.MSG_START);
-                                msg.arg1 = rdata.getAsInteger(Record.ID);
-                                msg.arg2 = rdata.getAsInteger("item_pos");
+                                msg.arg1 = 1;
                                 try {
                                     mPlayback.send(msg);
                                 } catch (RemoteException e) {
@@ -386,9 +419,7 @@ public class PlayingListActivity extends Activity {
                                 }
                             }else if (rdata.getAsInteger("player_status") == PlayBackService.STA_STARTED){
                                 // Status of playing, paused it
-                                Message msg = Message.obtain(null, PlayBackService.MSG_PAUSED);
-                                msg.arg1 = rdata.getAsInteger(Record.ID);
-                                msg.arg2 = rdata.getAsInteger("item_pos");
+                                Message msg = Message.obtain(null, PlayBackService.MSG_PAUSE);
                                 try {
                                     mPlayback.send(msg);
                                 } catch (RemoteException e) {
@@ -447,6 +478,13 @@ public class PlayingListActivity extends Activity {
                     holder.esm.setVisibility(View.VISIBLE);
 
                     holder.esm_title.setText(data.getAsString(Record.NAME));
+                    if (mExtendItemPos > 0){
+                        // some item has extended grad it
+                        holder.esm_title.setTextColor(getResources().getColor(R.color.esm_item_grey));
+                    }else{
+                        holder.esm_title.setTextColor(getResources().getColor(R.color.esm_item_black));
+                    }
+
                     if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
                         if (data.getAsInteger(Record.READ) == 0)
                             holder.esm_status.setImageResource(R.drawable.esm_unread);
@@ -476,7 +514,7 @@ public class PlayingListActivity extends Activity {
             ImageButton plm_playerbt;
             SeekBar plm_seekbar;
             TextView plm_rec_nj;
-            TextView plm_rec_updated;
+            //TextView plm_rec_updated;
             TextView plm_rec_timer;
            // TextView plm_playtime;
         }
@@ -518,6 +556,8 @@ public class PlayingListActivity extends Activity {
                     }else if(status.status == PlayBackService.STA_READY){
                         // if get ready tell the playback start playing
                         Message ms = Message.obtain(null, PlayBackService.MSG_START);
+                        // make the player progress bar work!
+                        ms.arg1 = 1;
                         try {
                             mPlayback.send(ms);
                         } catch (RemoteException e) {
@@ -532,7 +572,10 @@ public class PlayingListActivity extends Activity {
                         data.put("player_status", (Integer)status.status);
                         data.put("player_curpos", status.position);
                         data.put("player_duration", status.duration);
-
+                        if (data.getAsInteger(Record.READ) == 0){
+                            data.put(Record.READ,1);
+                            new Record().updateRead(PlayingListActivity.this, data.getAsInteger(Record.ID));
+                        }
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
 

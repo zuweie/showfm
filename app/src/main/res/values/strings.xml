@@ -9,7 +9,7 @@
     <string name="title_activity_startup">StartupActivity</string>
     <string name="load_data_ok">load data ok</string>
     <string name="load_data_unusual">load data unusual</string>
-    <string name="start_up_tips">Loading...</string>
+    <string name="start_up_tips">姐姐陪你收听ShowFm喔...</string>
     <string name="title_activity_record">record</string>
     <string name="title_activity_playing_list">PlayingListActivity</string>
 
@@ -20,4 +20,9 @@
     <string name="nj">主播 : </string>
     <string name="record_nj">播讲：</string>
     <string name="record_updated">日期：</string>
+
+    <string name="startup_progress_1">下载数据...</string>
+    <string name="startup_progress_2">下载完成,配置中...</string>
+    <string name="startup_progress_3">数据更新中...</string>
+    <string name="startup_progress_4">姐姐陪你收听ShowFm喔...</string>
 </resources>

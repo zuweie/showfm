@@ -32,7 +32,8 @@ public class MyOpenHelper extends SQLiteOpenHelper{
     private final static String SQL_CREATE_MARK = " CREATE TABLE " +MyConstant.MARKTAB+ " ( "
                                                 + MyConstant.MF_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                                                 + MyConstant.MF_TABNAME + " VARCHAR(255), "
-                                                + MyConstant.MF_DATE + " VARCHAR(255) DEFAULT '1999/12/30');";
+                                                + MyConstant.MF_CONTENTID + " INTEGER DEFAULT 0, "
+                                                + MyConstant.MF_DATE + " UNSIGNED BIG INT DEFAULT 0 );";
 
     private final static String SQL_CREATE_RECORD = " CREATE TABLE " + Record.TAB + " ( "
                                                   + Record.ID + " INTEGER PRIMARY KEY, "

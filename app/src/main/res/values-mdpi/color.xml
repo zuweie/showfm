@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="esm_item_grey">#ffc6b8df</color>
+    <color name="esm_item_black">#000000</color>
+</resources>

@@ -12,10 +12,10 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="@string/start_up_tips"
-        android:id="@+id/textView"
-        android:textSize="40dp"
+        android:id="@+id/start_up_text"
+        android:textSize="15dp"
         android:textIsSelectable="true"
         android:autoText="false"
-        android:layout_centerVertical="true"
+        android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true" />
 </RelativeLayout>

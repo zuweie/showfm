@@ -1,9 +1,13 @@
 package com.example.zuweie.showfm;
 
 import android.net.Uri;
+import android.text.format.DateFormat;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Created by zuweie on 12/17/14.
@@ -33,12 +37,27 @@ public class Myfunc {
         // sign
         long etime = System.currentTimeMillis()/1000L + expire;
 
-        String token = "";
+        String token = "qR9sXisWuGzk3";
         String sign  = token+"&"+etime+"&"+down;
 
         sign = Myfunc.md5(sign);
 
         sign = sign.substring(12, 20) + etime;
+        return "http://dl.showfm.net/downloads/"+foler+ Uri.encode(itemurl)+"?_upt="+sign;
     }
 
+    public static long diffHour(long time){
+        long now = System.currentTimeMillis();
+        long difftime =  now - time;
+        return  difftime / 1000 / 60 / 60;
+    }
+
+    public static long diffDay(long time){
+        return diffHour(time) / 24;
+    }
+
+    public static String ltime2Sdate (long time){
+        String date = DateFormat.format("yyyy/MM/dd hh:mm:ss", time).toString();
+        return date;
+    }
 }

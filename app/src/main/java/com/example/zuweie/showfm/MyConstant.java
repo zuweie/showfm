@@ -23,11 +23,7 @@ public class MyConstant {
     public final static String MF_ID      = "id";
     public final static String MF_TABNAME = "tabname";
     public final static String MF_DATE    = "date";
-
-
-    /*api*/
-    //public final static String NVL_API = "http://www.showfm.net/api/novel.asp";
-    //public final static String RED_API = "http://www.showfm.net/api/record.asp";
+    public final static String MF_CONTENTID = "content_id";
 
     /* play content type */
     public final static Integer PM_NOVEL = 1;

@@ -11,9 +11,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -111,30 +109,60 @@ public abstract class MyData {
         return datas;
     }
 
+    public void setMark(Context c, int contentid){
+
+        long time = System.currentTimeMillis();
+
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        ContentValues data = new ContentValues();
+        data.put(MyConstant.MF_TABNAME, mTab);
+        data.put(MyConstant.MF_DATE, time);
+        data.put(MyConstant.MF_CONTENTID, contentid);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        db.insert(MyConstant.MARKTAB, null, data);
+        db.close();
+    }
+
     public void setMark(Context c){
-        String date = (String) DateFormat.format("yyyy/MM/dd", new Date());
+
+        long time = System.currentTimeMillis();
         MyOpenHelper dbh = new MyOpenHelper(c);
         ContentValues data = new ContentValues();
 
         SQLiteDatabase db = dbh.getWritableDatabase();
         data.put(MyConstant.MF_TABNAME, mTab);
-        data.put(MyConstant.MF_DATE, date);
+        data.put(MyConstant.MF_DATE, time);
         db.insert(MyConstant.MARKTAB, null, data);
         db.close();
     }
 
-    public String getMark (Context c) {
-        String date = null;
+
+    public long getMark (Context c) {
+        long time = 0;
         MyOpenHelper dbh = new MyOpenHelper(c);
         SQLiteDatabase db = dbh.getWritableDatabase();
 
         Cursor cursor = db.query(MyConstant.MARKTAB, null, MyConstant.MF_TABNAME + " = \'"+ mTab+"\'", null, null, null, null);
 
         while (cursor.moveToNext()){
-            date = cursor.getString(cursor.getColumnIndex(MyConstant.MF_DATE));
+            time = cursor.getLong(cursor.getColumnIndex(MyConstant.MF_DATE));
         }
         cursor.close();
         db.close();
-        return date;
+        return time;
+    }
+
+    public long getMark (Context c, int contentid){
+        long time = 0;
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        String qr = MyConstant.MF_TABNAME + "= \'"+mTab+"\' and "+MyConstant.MF_CONTENTID + " = \'" +contentid+"\' ";
+        Cursor cursor = db.query(MyConstant.MARKTAB, null, qr, null, null, null, null);
+        while (cursor.moveToNext()){
+            time = cursor.getLong(cursor.getColumnIndex(MyConstant.MF_DATE));
+        }
+        cursor.close();
+        db.close();
+        return time;
     }
 }

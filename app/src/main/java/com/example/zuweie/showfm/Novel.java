@@ -38,6 +38,7 @@ public class Novel extends MyData{
     public final static String CATEGORY = "category";
 
     private SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    private SimpleDateFormat df2 = new SimpleDateFormat("yyyy/MM/dd");
 
 
     public Novel() {
@@ -77,12 +78,20 @@ public class Novel extends MyData{
             data.put(Novel.CATEGORY, jelem.getString(Novel.CATEGORY));
 
         if(!jelem.isNull(Novel.UPDATED)) {
+            long time = -1;
+            String date = jelem.getString(Novel.UPDATED);
             try {
-                String date = jelem.getString(Novel.UPDATED);
-                long time = this.df.parse(date).getTime();
-                data.put(Novel.UPDATED, time);
+                time = this.df.parse(date).getTime();
             } catch (ParseException e) {
-                e.printStackTrace();
+                try {
+                    time = this.df2.parse(date).getTime();
+                } catch (ParseException e1) {
+                    Log.e(MyConstant.TAG_NOVEL, e.getMessage());
+                }
+            }
+
+            if (time > 0){
+                data.put(Novel.UPDATED, time);
             }
         }
         if (!jelem.isNull(Novel.STATUS))
@@ -120,7 +129,7 @@ public class Novel extends MyData{
         ContentValues data = null;
         MyOpenHelper dbh = new MyOpenHelper(c);
         SQLiteDatabase db = dbh.getWritableDatabase();
-        String selection = Novel.ID + " = \'"+id+"\'";
+        String selection = Novel.ID + " = \'"+id+"\' ";
 
         Cursor cursor = db.query(TAB,null, selection, null, null, null, null, null);
         while(cursor.moveToNext()) {
@@ -129,5 +138,18 @@ public class Novel extends MyData{
         cursor.close();
         db.close();
         return data;
+    }
+
+    public int updataNovelDate(Context c, List<ContentValues> datas){
+        int r = 0;
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        for (int i=0; i<datas.size(); ++i){
+            ContentValues v = datas.get(i);
+            String wherecase = Novel.ID + " = \'"+v.getAsInteger(Novel.ID)+"\' ";
+            r += db.update(TAB, v, wherecase, null);
+        }
+        db.close();
+        return r;
     }
 }

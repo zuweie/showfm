@@ -33,7 +33,7 @@ public class Record extends MyData{
     public final static String READ = "read";
 
     private static SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-
+    private static SimpleDateFormat df2 = new SimpleDateFormat("yyyy/MM/dd");
     public Record() {
         super(TAB);
     }
@@ -52,12 +52,21 @@ public class Record extends MyData{
         if (!jelem.isNull(Record.URL))
             data.put(Record.URL, jelem.getString(Record.URL));
         if (!jelem.isNull(Record.UPDATED)) {
+            String date = jelem.getString(Record.UPDATED);
+            long time = -1;
             try {
-                String date = jelem.getString(Record.UPDATED);
-                long time = this.df.parse(date).getTime();
-                data.put(Record.UPDATED, time);
+
+                time = this.df.parse(date).getTime();
+
             } catch (ParseException e) {
-                Log.e(MyConstant.TAG_RECORD_JSON, e.getMessage());
+                try {
+                    time = this.df2.parse(date).getTime();
+                } catch (ParseException e1) {
+                    Log.e(MyConstant.TAG_NOVEL, e.getMessage());
+                }
+            }
+            if (time > 0){
+                data.put(Record.UPDATED, time);
             }
         }
         if (!jelem.isNull(Record.NOVELID))
@@ -118,6 +127,13 @@ public class Record extends MyData{
         return updateData(c, data, selection, null);
     }
 
+
+    public int updateRead(Context c, int id){
+        ContentValues v = new ContentValues();
+        v.put(Record.ID, id);
+        v.put(Record.READ, 1);
+        return this.updateDataById(c, v);
+    }
 
     public int createDownloader(Context c, ContentValues rdata){
 
