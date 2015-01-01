@@ -48,6 +48,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class MainActivity extends Activity {
 
     /* data define */
+    public static ClientID mClientid = new ClientID();
+
     private PullToRefreshGridView mPullToRefreshGridView;
     private GridView mGridView;
     private List<ContentValues> mNovel_data = null;
@@ -68,7 +70,7 @@ public class MainActivity extends Activity {
                 Message msg = Message.obtain(null, PlayBackService.MSG_LOGIN);
                 msg.replyTo = mItself;
                 // client id;
-                msg.arg1 = 1;
+                msg.arg1 = mClientid.getClientID();
 
                 mPlayback.send(msg);
 
@@ -123,8 +125,8 @@ public class MainActivity extends Activity {
 
         // if some cover need to load then create the load task to load it
         if (!loadCoverParams.isEmpty()){
-            new GetNovelCoverTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,loadCoverParams);
-            //new GetNovelCoverTask().execute(loadCoverParams);
+            //new GetNovelCoverTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,loadCoverParams);
+            new GetNovelCoverTask().execute(loadCoverParams);
         }
 
         mItself = new Messenger(new MainHandler());
@@ -263,7 +265,7 @@ public class MainActivity extends Activity {
     public void ubs (){
         if (connectService()){
             Message msg = Message.obtain(null, PlayBackService.MSG_LOGOUT);
-            msg.arg1 = 1;
+            msg.arg1 = mClientid.getClientID();
             try {
                 mPlayback.send(msg);
             } catch (RemoteException e) {

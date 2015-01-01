@@ -70,6 +70,7 @@ public class StartupActivity extends Activity {
                 long time = novel.getMark(StartupActivity.this);
                 long diffday = Myfunc.diffDay(time);
                 if (diffday >=1){
+                    Thread.sleep(1000);
                     publishProgress(getResources().getText(R.string.startup_progress_1));
                     String date = Myfunc.ltime2Sdate(time);
                     String api = "http://www.showfm.net/api/novel.asp?after="+ Uri.encode(date)+"&state0=1&state1=2";
@@ -77,10 +78,8 @@ public class StartupActivity extends Activity {
                     publishProgress(getResources().getText(R.string.startup_progress_2));
                     if (datas != null && !datas.isEmpty()) {
                         novel.saveData(StartupActivity.this, datas);
-                        novel.setMark(StartupActivity.this);
                         List<ContentValues> vs = new ArrayList<ContentValues>();
                         publishProgress(getResources().getText(R.string.startup_progress_3));
-                        //SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
                         for(int i=0; i<datas.size(); ++i){
                             ContentValues v = new ContentValues();
                             ContentValues data = datas.get(i);
@@ -89,6 +88,7 @@ public class StartupActivity extends Activity {
                             vs.add(v);
                         }
                         novel.updataNovelDate(StartupActivity.this, vs);
+                        novel.setMark(StartupActivity.this);
                         publishProgress(getResources().getText(R.string.startup_progress_4));
                         Thread.sleep(2000);
                     }

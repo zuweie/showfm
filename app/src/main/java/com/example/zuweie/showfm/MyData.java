@@ -25,8 +25,8 @@ public abstract class MyData {
 
     private MyData(){}
 
-    public MyData(String tab){
-        this.mTab    = tab;
+    public MyData(String tab) {
+        this.mTab = tab;
     }
 
     public abstract ContentValues j2d(JSONObject jelem) throws JSONException;

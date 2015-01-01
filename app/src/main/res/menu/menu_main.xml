@@ -6,14 +6,13 @@
         android:orderInCategory="100"
         android:showAsAction="never" />
 
+    <item android:id="@+id/action_play"
+        android:title="player"
+        android:icon="@drawable/actionbar_start"
+        android:showAsAction="always"/>
+
     <item android:id="@+id/action_exit"
           android:title="Exit"
           android:icon="@drawable/exit"
           android:showAsAction="ifRoom"/>
-
-    <item android:id="@+id/action_play"
-          android:title="player"
-          android:icon="@drawable/actionbar_start"
-          android:showAsAction="always"/>
-
 </menu>

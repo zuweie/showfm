@@ -33,26 +33,28 @@ public class PlayBackService extends Service {
     private MediaPlayer mPlayback = null;
 
     /* Msg define */
-    public final static int MSG_LOGIN = 0x1;
-    public final static int MSG_LOGOUT = 0x2;
-    public final static int MSG_PLAY = 0X3;
-    public final static int MSG_START = 0x4;
-    public final static int MSG_PAUSE = 0X5;
-    public final static int MSG_SEEKTO = 0x6;
-    public final static int MSG_LOAD_RECORD_LIST = 0x7;
-    public final static int MSG_START_DOWNLOAD_REC = 0x8;
-    public final static int MSG_PAUSE_DOWNLOAD_REC = 0x9;
-    public final static int MSG_CURRENT_STATUS =    0x10;
+    public final static int MSG_LOGIN = 1;
+    public final static int MSG_LOGOUT = 2;
+    public final static int MSG_PLAY = 3;
+    public final static int MSG_START = 4;
+    public final static int MSG_PAUSE = 5;
+    public final static int MSG_SEEKTO = 6;
+    public final static int MSG_LOAD_RECORD_LIST = 7;
+    public final static int MSG_START_DOWNLOAD_REC = 8;
+    public final static int MSG_PAUSE_DOWNLOAD_REC = 9;
+    public final static int MSG_CURRENT_STATUS =    10;
+    public final static int MSG_START_PLAYER_PGROGRESS_UPDATER = 11;
+    public final static int MSG_STOP_PLAYER_PROGRESS_UPDATER = 12;
 
     /* status define */
-    public final static int STA_IDLE = 0x0;
-    public final static int STA_STARTED = 0x1;
-    public final static int STA_PAUSED = 0x2;
-    public final static int STA_PREPARING = 0x3;
+    public final static int STA_IDLE = 0;
+    public final static int STA_STARTED = 1;
+    public final static int STA_PAUSED = 2;
+    public final static int STA_PREPARING = 3;
     //public final static int STA_BUFFERING = 0x7;
-    public final static int STA_READY = 0x4;
-    public final static int STA_ERROR = 0x5;
-    public final static int STA_COMPLETED = 0x6;
+    public final static int STA_READY = 4;
+    public final static int STA_ERROR = 5;
+    public final static int STA_COMPLETED = 6;
 
     /* */
     private static Status mMp3Status;
@@ -76,7 +78,6 @@ public class PlayBackService extends Service {
         mPlayback.setOnErrorListener(new MediaPlayer.OnErrorListener() {
             @Override
             public boolean onError(MediaPlayer mp, int what, int extra) {
-                stopUpdater();
                 mMp3Status.err_extra = extra;
                 mMp3Status.err_what  = what;
                 mMp3Status.updateStatus(PlayBackService.STA_ERROR,  mClients);
@@ -90,8 +91,8 @@ public class PlayBackService extends Service {
             public void onBufferingUpdate(MediaPlayer mp, int percent) {
                 if (percent - mMp3Status.buffer_percent > 4){
                     mMp3Status.buffer_percent = percent;
-                    mMp3Status.updateMP3BufferProgress(mClients);
-                    Log.v(MyConstant.TAG_PLAYBACK, "Updated buffer percent : " + percent);
+                    //mMp3Status.updateMP3BufferProgress(mClients);
+                    //Log.v(MyConstant.TAG_PLAYBACK, "Updated buffer percent : " + percent);
                 }
             }
         });
@@ -109,7 +110,6 @@ public class PlayBackService extends Service {
             @Override
             public void onCompletion(MediaPlayer mp) {
                 //mMp3Status.updateStatus(PlayBackService.STA_COMPLETED, mClient);
-                stopUpdater();
             }
         });
 
@@ -253,20 +253,28 @@ public class PlayBackService extends Service {
 
     }
 
+
     public static void sendMessage(Message msg, SparseArray<Messenger> clients){
+
         synchronized (clients){
             for(int i=0; i<clients.size(); ++i){
-                try {
-                    clients.valueAt(i).send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
-                }
+                Messenger client = clients.valueAt(i);
+                sendMessage2Client(msg, client);
             }
         }
+
     }
 
-    public static void sendMessage2Client(Message msg, SparseArray<Message>clients, int key){
 
+    public static void sendMessage2Client(Message msg, Messenger client){
+
+        if (client != null){
+            try {
+                client.send(msg);
+            } catch (RemoteException e) {
+                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+            }
+        }
     }
 
     private ContentValues createDownloadTaskById(int id){
@@ -285,6 +293,50 @@ public class PlayBackService extends Service {
             }
         }
         return null;
+    }
+
+    private List<ContentValues> loadReclist(int novelid, boolean remote){
+        Record record = new Record();
+        List<ContentValues> newdatas = null;
+
+        if (remote){
+
+            String date = Myfunc.ltime2Sdate(record.getMark(PlayBackService.this, novelid));
+            String api = "http://www.showfm.net/api/record.asp?after="+Uri.encode(date)+"&perpage=9999&novel_id="+novelid;
+            try {
+                newdatas = record.getData(api);
+                if (!newdatas.isEmpty()) {
+                    record.saveData(PlayBackService.this, newdatas);
+                }
+                record.setMark(PlayBackService.this, novelid);
+            } catch (IOException e) {
+                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+            } catch (JSONException e) {
+                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+            }
+
+        }
+        // load it from database;
+        newdatas = record.loadDataByNovelId(PlayBackService.this, novelid);
+
+        for(int i=0; i<newdatas.size(); ++i){
+            ContentValues data = newdatas.get(i);
+            data.put("item_pos",i);
+            data.put("item_mode", 0);
+            if (data.getAsInteger(Record.ID) == mMp3Status.itemId){
+                data.put("player_status", mMp3Status.status);
+                data.put("player_curpos", mMp3Status.position);
+                data.put("player_duration", mMp3Status.duration);
+                data.put("player_buffer", 0);
+                mMp3Status.itemPos = data.getAsInteger("item_pos");
+            }else{
+                data.put("player_status", PlayBackService.STA_IDLE);
+                data.put("player_curpos", 0);
+                data.put("player_duration", 0);
+                data.put("player_buffer", 0);
+            }
+        }
+        return newdatas;
     }
 
     /* playback info define */
@@ -327,20 +379,22 @@ public class PlayBackService extends Service {
             this.itemId = -1;
             this.itemPos = -1;
             this.playMode = -1;
-            this.novelId = -1;
+            this.contentId = -1;
         }
 
-        public void updateMP3Progress (SparseArray<Messenger> clients){
+        public void updateMP3Progress (SparseArray<Messenger> clients) {
             Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3PROGRESS_UPDTED);
             msg.obj = mMp3Status;
-            sendMessage(msg, clients);
+            sendMessage2Client(msg, clients.get(PlayingListActivity.mClientId.getClientID()));
         }
-
-        public void updateMP3BufferProgress(SparseArray<Messenger> clients){
+        /*
+        public void updateMP3BufferProgress (SparseArray<Messenger> clients) {
             Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_MP3BUFFERING_UPDATED);
             msg.obj = mMp3Status;
-            sendMessage(msg, clients);
+            sendMessage2Client(msg, clients.get(PlayingListActivity.mClientId.getClientID()));
         }
+        */
+
         public int status;
         //public String title;
         public int position;
@@ -351,7 +405,8 @@ public class PlayBackService extends Service {
         public int itemPos = -1;
         public int itemId = -1;
         public int playMode = MyConstant.PM_NOVEL;
-        public int novelId = -1;
+        //public int novelId = -1;
+        public int contentId = -1;
     }
 
     /* playback function define */
@@ -360,46 +415,66 @@ public class PlayBackService extends Service {
         public void handleMessage(Message msg){
             int downloadid;
             ContentValues downloadtask = null;
+            Message rmsg;
             switch (msg.what){
                 case MSG_LOGIN:
-                    //mClient = msg.replyTo;
                     addClient(msg.arg1, msg.replyTo);
                     break;
                 case MSG_LOGOUT:
-                    //mClient = null;
                     removeClient(msg.arg1);
-                    stopUpdater();
                     break;
                 case MSG_PLAY:
+                    /* init mMp3Status here! very important, take care */
+                    /* play means stoped the current one, and play next*/
+                    // call the client to clean up the last playing item
+                    if (msg.arg1 != mMp3Status.itemId) {
+                        rmsg = Message.obtain(null, PlayingListActivity.MSG_ON_CLEAN_UP_ITEM_UI);
+                        rmsg.arg1 = mMp3Status.itemId;
+                        rmsg.arg2 = mMp3Status.itemPos;
+                        sendMessage2Client(rmsg, mClients.get(PlayingListActivity.mClientId.getClientID()));
+                    }
+
                     // clean the all the status;
                     mMp3Status.updateStatus();
-                    stopUpdater();
-                    String url = (String)msg.obj;
+                    String params = (String)msg.obj;
+                    String[] param = params.split(" ");
+                    String url = param[0];
+                    mMp3Status.contentId = Integer.valueOf(param[1]);
                     mMp3Status.itemId = msg.arg1;
                     mMp3Status.itemPos = msg.arg2;
+
                     play(url);
                     break;
                 case MSG_START:
                     start();
-                    if (msg.arg1 == 1) {
-                        startUpdater();
-                    }
                     break;
                 case MSG_PAUSE:
                     paused();
-                    stopUpdater();
                     break;
                 case MSG_SEEKTO:
                     seekTo(msg.arg1);
                     break;
                 case MSG_CURRENT_STATUS:
-                    Message rmsg = Message.obtain(null, PlayingListActivity.MSG_ON_CURRENT_STATUS);
+                    rmsg = Message.obtain(null, PlayingListActivity.MSG_ON_CURRENT_STATUS);
                     rmsg.obj = mMp3Status;
                     PlayBackService.sendMessage(rmsg, mClients);
                     break;
+                case MSG_START_PLAYER_PGROGRESS_UPDATER:
+                    startUpdater();
+                    break;
+                case MSG_STOP_PLAYER_PROGRESS_UPDATER:
+                    stopUpdater();
+                    break;
                 case MSG_LOAD_RECORD_LIST:
-                    if (mDoingWhat.getLoadingRec() == false){
+                    Record record = new Record();
+                    long time = record.getMark(PlayBackService.this, msg.arg1);
+                    if (Myfunc.diffHour(time)>=6 && mDoingWhat.getLoadingRec() == false){
                         new GetRecordListTask().execute(msg.arg1);
+                    } else if (mDoingWhat.getLoadingRec() == false){
+                        List<ContentValues> datas = loadReclist(msg.arg1, false);
+                        msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
+                        msg.obj = datas;
+                        sendMessage2Client(msg, mClients.get(PlayingListActivity.mClientId.getClientID()));
                     }
                     break;
 
@@ -408,11 +483,8 @@ public class PlayBackService extends Service {
                     if (downloadid > 0) {
                         // find the downloader first
                         downloadtask = createDownloadTaskById(downloadid);
-
                         if (downloadtask != null) {
-
                             new DownloadTask(downloadtask, msg.arg1, msg.arg2).execute();
-
                         }
                     }else{
                         Log.e(MyConstant.TAG_DOWNLOADER, "had not create the download task!");
@@ -562,30 +634,8 @@ public class PlayBackService extends Service {
         protected List<ContentValues> doInBackground(Integer[] params) {
 
             mDoingWhat.setLoadingRec(true);
-
             Integer novelid = params[0];
-
-            //List<ContentValues> datas;
-            Record record = new Record();
-            // load the update form api
-            String date = Myfunc.ltime2Sdate(record.getMark(PlayBackService.this, novelid));
-            String api = "http://www.showfm.net/api/record.asp?after="+Uri.encode(date)+"&perpage=9999&novel_id="+novelid;
-            List<ContentValues> newdatas = null;
-            try {
-                newdatas = record.getData(api);
-                if (!newdatas.isEmpty()){
-                    record.saveData(PlayBackService.this, newdatas);
-                    record.setMark(PlayBackService.this, novelid);
-                }
-                // load the data from database;
-                newdatas = record.loadDataByNovelId(PlayBackService.this, novelid);
-                record.loadDownloader(PlayBackService.this, newdatas);
-
-            } catch (IOException e) {
-                Log.e(MyConstant.TAG_RECORD_API, e.getMessage());
-            } catch (JSONException e) {
-                Log.e(MyConstant.TAG_RECORD_JSON, e.getMessage());
-            }
+            List<ContentValues> newdatas = loadReclist(novelid, true);
             mDoingWhat.setLoadingRec(false);
             return newdatas;
         }
@@ -594,19 +644,8 @@ public class PlayBackService extends Service {
         protected void onPostExecute (List<ContentValues> result){
             if (result != null){
                 Message msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
-                ContentValues data;
-                // init the ui data
-                for(int i=0; i<result.size(); ++i){
-                    data = result.get(i);
-                    data.put("item_pos",i);
-                    data.put("item_mode", 0);
-                    data.put("player_status", PlayBackService.STA_IDLE);
-                    data.put("player_curpos", 0);
-                    data.put("player_duration", 0);
-                    data.put("player_buffer", 0);
-                }
                 msg.obj = result;
-                sendMessage(msg, mClients);
+                sendMessage2Client(msg, mClients.get(PlayingListActivity.mClientId.getClientID()));
             }
         }
     }

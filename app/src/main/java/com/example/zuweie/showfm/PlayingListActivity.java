@@ -28,6 +28,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
@@ -45,6 +46,7 @@ import java.util.List;
 public class PlayingListActivity extends Activity {
 
     /* content data */
+    public static ClientID mClientId  = new ClientID();
     private List<ContentValues> mPlaying_data;
     private Record mRecord = new Record();
     private Integer mPlayMode;
@@ -56,8 +58,7 @@ public class PlayingListActivity extends Activity {
     private ListView mPlayinglistView;
     private MyAdapter mMyadapter;
     private Integer mExtendItemPos = 0;
-    private Integer mLastPlayItemID = -1;
-    private Integer mLastPlayItemPos = -1;
+    private MenuItem mPlaybackItem;
 
     /* PlayBack data */
     private Messenger mPlayback;
@@ -74,16 +75,22 @@ public class PlayingListActivity extends Activity {
                 // log to service
                 Message msg = Message.obtain(null, PlayBackService.MSG_LOGIN);
                 msg.replyTo = mItSelf;
-                msg.arg1 = 2;
+                msg.arg1 = mClientId.getClientID();
                 mPlayback.send(msg);
 
                 // post request to get Record list
-                // TODO : check if it need to load on net word;
                 if (isNovelMode()){
                     msg = Message.obtain(null, PlayBackService.MSG_LOAD_RECORD_LIST);
                     msg.arg1 = mNovelId;
                     mPlayback.send(msg);
                 }
+
+                msg = Message.obtain(null, PlayBackService.MSG_CURRENT_STATUS);
+                mPlayback.send(msg);
+
+                msg = Message.obtain(null, PlayBackService.MSG_START_PLAYER_PGROGRESS_UPDATER);
+                mPlayback.send(msg);
+
             } catch (RemoteException e) {
                 Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
             }
@@ -97,19 +104,20 @@ public class PlayingListActivity extends Activity {
     /* PlayBack data */
 
     /* Handle Message define */
-    public final static int MSG_ON_MP3STA_UPDATE = 0x1;
-    public final static int MSG_ON_LOAD_RECORD_LIST_DONE = 0x2;
-    public final static int MSG_ON_DOWNLOAD_PROGRESS = 0x3;
-    public final static int MSG_ON_DOWNLOAD_DONE = 0x4;
-    public final static int MSG_ON_DOWNLOAD_PAUSED = 0x6;
-    public final static int MSG_ON_DOWNLOAD_ERR    = 0x7;
-    public final static int MSG_ON_DOWNLOAD_STARTED = 0x8;
-    public final static int MSG_ON_DOWNLOAD_DELETE = 0X9;
-    public final static int MSG_ON_READY_DOWNLOAD = 0x5;
-    public final static int MSG_ON_EXTEND_ITEM = 0x10;
-    public final static int MSG_ON_MP3PROGRESS_UPDTED = 0x11;
-    public final static int MSG_ON_MP3BUFFERING_UPDATED = 0x12;
-    public final static int MSG_ON_CURRENT_STATUS = 0x13;
+    public final static int MSG_ON_MP3STA_UPDATE = 1;
+    public final static int MSG_ON_LOAD_RECORD_LIST_DONE = 2;
+    public final static int MSG_ON_DOWNLOAD_PROGRESS = 3;
+    public final static int MSG_ON_DOWNLOAD_DONE = 4;
+    public final static int MSG_ON_DOWNLOAD_PAUSED = 6;
+    public final static int MSG_ON_DOWNLOAD_ERR    = 7;
+    public final static int MSG_ON_DOWNLOAD_STARTED = 8;
+    public final static int MSG_ON_DOWNLOAD_DELETE = 9;
+    public final static int MSG_ON_READY_DOWNLOAD = 5;
+    public final static int MSG_ON_EXTEND_ITEM = 10;
+    public final static int MSG_ON_MP3PROGRESS_UPDTED = 11;
+    public final static int MSG_ON_MP3BUFFERING_UPDATED = 12;
+    public final static int MSG_ON_CURRENT_STATUS = 13;
+    public final static int MSG_ON_CLEAN_UP_ITEM_UI = 14;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -132,7 +140,15 @@ public class PlayingListActivity extends Activity {
         mPullToRefreshListView.setOnRefreshListener(new PullToRefreshBase.OnRefreshListener2<ListView>() {
             @Override
             public void onPullDownToRefresh(PullToRefreshBase<ListView> refreshView) {
-
+                if (mPlayback != null&&isNovelMode()){
+                    Message msg = Message.obtain(null, PlayBackService.MSG_LOAD_RECORD_LIST);
+                    msg.arg1 = mNovelId;
+                    try {
+                        mPlayback.send(msg);
+                    } catch (RemoteException e) {
+                        Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                    }
+                }
             }
 
             @Override
@@ -193,7 +209,6 @@ public class PlayingListActivity extends Activity {
     @Override
     protected void onStart(){
         super.onStart();
-
     }
 
     @Override
@@ -218,6 +233,9 @@ public class PlayingListActivity extends Activity {
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_playing_list, menu);
+        mPlaybackItem = menu.findItem(R.id.action_player);
+        mPlaybackItem.setVisible(false);
+        mPlaybackItem.setIntent(new Intent());
         return true;
     }
 
@@ -238,6 +256,27 @@ public class PlayingListActivity extends Activity {
         */
         if (id == android.R.id.home){
             this.finish();
+        }else if (id == R.id.action_player){
+            if (mPlayback != null){
+                Message msg = null;
+                int status = item.getIntent().getIntExtra("player_status", -1);
+                if (status == PlayBackService.STA_STARTED){
+                    msg = Message.obtain(null, PlayBackService.MSG_PAUSE);
+                }else if (status == PlayBackService.STA_PAUSED){
+                    msg = Message.obtain(null, PlayBackService.MSG_START);
+                    msg.arg1 = 1;
+                }else if (status == PlayBackService.STA_COMPLETED){
+                    msg = Message.obtain(null, PlayBackService.MSG_START);
+                    msg.arg1 = 1;
+                }
+
+                try {
+                    mPlayback.send(msg);
+                } catch (RemoteException e) {
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                }
+            }
+
         }
         return super.onOptionsItemSelected(item);
     }
@@ -251,9 +290,12 @@ public class PlayingListActivity extends Activity {
 
     private void ubs(){
         if (mBindService){
-            Message msg = Message.obtain(null, PlayBackService.MSG_LOGOUT);
-            msg.arg1 = 2;
             try {
+                Message msg = Message.obtain(null, PlayBackService.MSG_LOGOUT);
+                msg.arg1 = mClientId.getClientID();
+                mPlayback.send(msg);
+
+                msg = Message.obtain(null, PlayBackService.MSG_STOP_PLAYER_PROGRESS_UPDATER);
                 mPlayback.send(msg);
             } catch (RemoteException e) {
                 Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
@@ -269,7 +311,7 @@ public class PlayingListActivity extends Activity {
     }
 
     private int getValidPos(int itemid , int itempos){
-        if (isNovelMode() && itemid >=0 && itempos >=0){
+        if (mPlaying_data != null && itempos < mPlaying_data.size() && itempos >=0  && isNovelMode() ){
             if (mPlaying_data.get(itempos).getAsInteger(Record.ID) == itemid)
                 return itempos;
             else{
@@ -381,30 +423,16 @@ public class PlayingListActivity extends Activity {
                             ContentValues rdata = (ContentValues)v.getTag();
                             if (rdata.getAsInteger("player_status") == PlayBackService.STA_IDLE
                               || rdata.getAsInteger("player_status") == PlayBackService.STA_ERROR){
-                                // Status of idle, play it
+                                // Status of idle or error, play it
                                 String url = rdata.getAsString(Record.URL);
+                                String[] param = new String[2];
                                 try {
-
-                                    // TODO : clean up the last item ui data
-
-                                    int validpos = getValidPos(mLastPlayItemID, mLastPlayItemPos);
-                                    if (validpos >= 0){
-                                        ContentValues lastdata = mPlaying_data.get(validpos);
-                                        lastdata.put("item_mode", 0);
-                                        lastdata.put("player_status", PlayBackService.STA_IDLE);
-                                        lastdata.put("player_curpos", 0);
-                                        lastdata.put("player_duration", 0);
-                                        lastdata.put("player_buffer", 0);
-                                    }
                                     url = Myfunc.getValidUrl(mNovelFolder+"/", url, 900);
                                     Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
-                                    msg.obj = url;
+                                    msg.obj = url+" "+rdata.getAsInteger(Record.NOVELID);
                                     msg.arg1 = rdata.getAsInteger(Record.ID);
                                     msg.arg2 = rdata.getAsInteger("item_pos");
-                                    mLastPlayItemID = msg.arg1;
-                                    mLastPlayItemPos = msg.arg2;
                                     mPlayback.send(msg);
-
                                 } catch (NoSuchAlgorithmException e) {
                                 } catch (RemoteException e) {Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());}
                             }else if (rdata.getAsInteger("player_status") == PlayBackService.STA_PAUSED
@@ -531,25 +559,39 @@ public class PlayingListActivity extends Activity {
             PlayBackService.Status status = null;
             ContentValues data = null;
             switch(msg.what){
+                case MSG_ON_CURRENT_STATUS:
                 case MSG_ON_MP3STA_UPDATE:
                     status = (PlayBackService.Status)msg.obj;
                     if (status.status == PlayBackService.STA_ERROR){
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        data = mPlaying_data.get(validpos);
-                        data.put("player_status", (Integer)status.status);
+                        if (validpos >=0) {
+                            data = mPlaying_data.get(validpos);
+                            data.put("player_status", status.status);
+                        }
+                        // update actionbar
+                        mPlaybackItem.setVisible(false);
 
+                        // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
 
+                        //Toast.makeText(PlayingListActivity.this, R.string.dl_server_err, Toast.LENGTH_SHORT).show();
                     }else if (status.status == PlayBackService.STA_COMPLETED){
 
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        data = mPlaying_data.get(validpos);
-                        data.put("player_status", (Integer)status.status);
+                        if (validpos >= 0) {
+                            data = mPlaying_data.get(validpos);
+                            data.put("player_status", status.status);
+                        }
+                        //update actionbar
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_start);
+                        mPlaybackItem.getIntent().putExtra("player_status", status.status);
+                        //update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
 
@@ -563,19 +605,31 @@ public class PlayingListActivity extends Activity {
                         } catch (RemoteException e) {
                             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                         }
+                        // update actionbar
+                        mPlaybackItem.setVisible(false);
+
                     }else if (status.status == PlayBackService.STA_STARTED){
 
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        data = mPlaying_data.get(validpos);
-                        data.put("player_status", (Integer)status.status);
-                        data.put("player_curpos", status.position);
-                        data.put("player_duration", status.duration);
-                        if (data.getAsInteger(Record.READ) == 0){
-                            data.put(Record.READ,1);
-                            new Record().updateRead(PlayingListActivity.this, data.getAsInteger(Record.ID));
+
+                        if (validpos >=0) {
+                            data = mPlaying_data.get(validpos);
+                            data.put("player_status",  status.status);
+                            data.put("player_curpos", status.position);
+                            data.put("player_duration", status.duration);
+                            if (data.getAsInteger(Record.READ) == 0) {
+                                data.put(Record.READ, 1);
+                                new Record().updateRead(PlayingListActivity.this, data.getAsInteger(Record.ID));
+                            }
                         }
+                        // update actionbar
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_pause);
+                        mPlaybackItem.getIntent().putExtra("player_status",status.status);
+
+                        // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
 
@@ -583,8 +637,17 @@ public class PlayingListActivity extends Activity {
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        data = mPlaying_data.get(validpos);
-                        data.put("player_status", (Integer)status.status);
+                        if (validpos >=0) {
+                            data = mPlaying_data.get(validpos);
+                            data.put("player_status", (Integer) status.status);
+                        }
+
+                        // update actionbar
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_start);
+                        mPlaybackItem.getIntent().putExtra("player_status", status.status);
+
+                        // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
 
@@ -592,10 +655,32 @@ public class PlayingListActivity extends Activity {
                         itemid = status.itemId;
                         itempos = status.itemPos;
                         validpos = getValidPos(itemid, itempos);
-                        data = mPlaying_data.get(validpos);
-                        data.put("player_status", (Integer)status.status);
+                        if (validpos >=0) {
+                            data = mPlaying_data.get(validpos);
+                            data.put("player_status", (Integer) status.status);
+                        }
+                        // update actionbar
+                        mPlaybackItem.setVisible(false);
+
+                        // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
+                    }
+                    break;
+                case MSG_ON_CLEAN_UP_ITEM_UI:
+                    itemid = msg.arg1;
+                    itempos = msg.arg2;
+                    validpos = getValidPos(itemid, itempos);
+                    if (validpos >=0) {
+                        data = mPlaying_data.get(validpos);
+                        data.put("item_mode", 0);
+                        data.put("player_status", PlayBackService.STA_IDLE);
+                        data.put("player_curpos", 0);
+                        data.put("player_duration", 0);
+                        data.put("player_buffer", 0);
+                    }
+                    if (isVisiblePosition(validpos)){
+                        mMyadapter.notifyDataSetChanged();
                     }
                     break;
                 case MSG_ON_MP3PROGRESS_UPDTED:
@@ -603,45 +688,43 @@ public class PlayingListActivity extends Activity {
                     itemid = status.itemId;
                     itempos = status.itemPos;
                     validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    data.put("player_curpos", status.position);
-                    data.put("player_duration", status.duration);
+                    if (validpos >=0) {
+                        data = mPlaying_data.get(validpos);
+                        data.put("player_curpos", status.position);
+                        data.put("player_duration", status.duration);
+                        int bufferpos = (int) (status.buffer_percent * 0.01 * status.duration);
+                        data.put("player_buffer", bufferpos);
+                    }
                     if (isVisiblePosition(validpos))
                         mMyadapter.notifyDataSetChanged();
 
                     break;
-                case MSG_ON_MP3BUFFERING_UPDATED:
-                    status = (PlayBackService.Status) msg.obj;
-                    itemid = status.itemId;
-                    itempos = status.itemPos;
-                    validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    int bufferpos = (int) (status.buffer_percent * 0.01 * status.duration);
-                    data.put("player_buffer", bufferpos);
-                    if (isVisiblePosition(validpos))
-                        mMyadapter.notifyDataSetChanged();
-                    break;
                 case MSG_ON_LOAD_RECORD_LIST_DONE:
                     mPlaying_data = (List<ContentValues>)msg.obj;
+                    mPullToRefreshListView.onRefreshComplete();
                     mMyadapter.notifyDataSetChanged();
+                    mExtendItemPos = -1;
                     break;
                 case MSG_ON_DOWNLOAD_PROGRESS:
                     itemid = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    data.put("progress", (Integer)msg.obj);
-                    data.put(Downloader.STATUS, Downloader.STA_STARTED);
+                    if (validpos >=0 ) {
+                        data = mPlaying_data.get(validpos);
+                        data.put("progress", (Integer) msg.obj);
+                        data.put(Downloader.STATUS, Downloader.STA_STARTED);
+                    }
                     if (isVisiblePosition(validpos))
                         mMyadapter.notifyDataSetChanged();
-
                     break;
                 case MSG_ON_DOWNLOAD_DONE:
                     itemid = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    data.put(Downloader.STATUS, (Integer)msg.obj);
+                    if (validpos >= 0) {
+                        data = mPlaying_data.get(validpos);
+                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                    }
                     if (isVisiblePosition(validpos))
                         mMyadapter.notifyDataSetChanged();
 
@@ -650,8 +733,10 @@ public class PlayingListActivity extends Activity {
                     itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    data.put(Downloader.STATUS, (Integer)msg.obj);
+                    if (validpos >=0 ) {
+                        data = mPlaying_data.get(validpos);
+                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                    }
                     if (isVisiblePosition(validpos)){
                         mMyadapter.notifyDataSetChanged();
                     }
@@ -660,8 +745,10 @@ public class PlayingListActivity extends Activity {
                     itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    data.put(Downloader.STATUS, (Integer)msg.obj);
+                    if (validpos >=0 ) {
+                        data = mPlaying_data.get(validpos);
+                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                    }
                     if (isVisiblePosition(validpos)){
                         mMyadapter.notifyDataSetChanged();
                     }
@@ -670,8 +757,10 @@ public class PlayingListActivity extends Activity {
                     itemid  = msg.arg1;
                     itempos = msg.arg2;
                     validpos = getValidPos(itemid, itempos);
-                    data = mPlaying_data.get(validpos);
-                    data.put(Downloader.STATUS, (Integer)msg.obj);
+                    if (validpos >=0) {
+                        data = mPlaying_data.get(validpos);
+                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                    }
                     if (isVisiblePosition(validpos)){
                         mMyadapter.notifyDataSetChanged();
                     }

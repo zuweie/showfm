@@ -7,8 +7,8 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_activity_startup">StartupActivity</string>
-    <string name="load_data_ok">load data ok</string>
-    <string name="load_data_unusual">load data unusual</string>
+    <string name="load_data_ok">数据加载Ok</string>
+    <string name="load_data_unusual">数据加载异常</string>
     <string name="start_up_tips">姐姐陪你收听ShowFm喔...</string>
     <string name="title_activity_record">record</string>
     <string name="title_activity_playing_list">PlayingListActivity</string>
@@ -25,4 +25,6 @@
     <string name="startup_progress_2">下载完成,配置中...</string>
     <string name="startup_progress_3">数据更新中...</string>
     <string name="startup_progress_4">姐姐陪你收听ShowFm喔...</string>
+
+    <string name="dl_server_err">服务器异常，请稍后再试！</string>
 </resources>
