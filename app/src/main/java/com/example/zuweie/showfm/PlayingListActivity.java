@@ -130,6 +130,7 @@ public class PlayingListActivity extends Activity {
         if (isNovelMode()) {
             mNovelId = this.getIntent().getIntExtra("nvl", -1);
             mNovelFolder = this.getIntent().getStringExtra("nvlf");
+            this.getActionBar().setTitle(this.getIntent().getStringExtra("nvltitle"));
         }
 
         /* init the UI */
@@ -560,6 +561,18 @@ public class PlayingListActivity extends Activity {
             ContentValues data = null;
             switch(msg.what){
                 case MSG_ON_CURRENT_STATUS:
+                    status = (PlayBackService.Status)msg.obj;
+                    if (status.status == PlayBackService.STA_PAUSED){
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_start);
+                    }else if (status.status == PlayBackService.STA_STARTED){
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_pause);
+                    }else{
+                        mPlaybackItem.setVisible(false);
+                    }
+                    mPlaybackItem.getIntent().putExtra("player_status", status.status);
+                    break;
                 case MSG_ON_MP3STA_UPDATE:
                     status = (PlayBackService.Status)msg.obj;
                     if (status.status == PlayBackService.STA_ERROR){
@@ -570,14 +583,13 @@ public class PlayingListActivity extends Activity {
                             data = mPlaying_data.get(validpos);
                             data.put("player_status", status.status);
                         }
-                        // update actionbar
-                        mPlaybackItem.setVisible(false);
-
                         // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
 
-                        //Toast.makeText(PlayingListActivity.this, R.string.dl_server_err, Toast.LENGTH_SHORT).show();
+                        mPlaybackItem.setVisible(false);
+
+                        Toast.makeText(PlayingListActivity.this, R.string.dl_server_err, Toast.LENGTH_SHORT).show();
                     }else if (status.status == PlayBackService.STA_COMPLETED){
 
                         itemid = status.itemId;
@@ -587,14 +599,10 @@ public class PlayingListActivity extends Activity {
                             data = mPlaying_data.get(validpos);
                             data.put("player_status", status.status);
                         }
-                        //update actionbar
-                        mPlaybackItem.setVisible(true);
-                        mPlaybackItem.setIcon(R.drawable.actionbar_start);
-                        mPlaybackItem.getIntent().putExtra("player_status", status.status);
                         //update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
-
+                        mPlaybackItem.setVisible(false);
                     }else if(status.status == PlayBackService.STA_READY){
                         // if get ready tell the playback start playing
                         Message ms = Message.obtain(null, PlayBackService.MSG_START);
@@ -605,8 +613,6 @@ public class PlayingListActivity extends Activity {
                         } catch (RemoteException e) {
                             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                         }
-                        // update actionbar
-                        mPlaybackItem.setVisible(false);
 
                     }else if (status.status == PlayBackService.STA_STARTED){
 
@@ -624,14 +630,13 @@ public class PlayingListActivity extends Activity {
                                 new Record().updateRead(PlayingListActivity.this, data.getAsInteger(Record.ID));
                             }
                         }
-                        // update actionbar
-                        mPlaybackItem.setVisible(true);
-                        mPlaybackItem.setIcon(R.drawable.actionbar_pause);
-                        mPlaybackItem.getIntent().putExtra("player_status",status.status);
-
                         // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
+
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_pause);
+                        mPlaybackItem.getIntent().putExtra("player_status", status.status);
 
                     }else if (status.status == PlayBackService.STA_PAUSED){
                         itemid = status.itemId;
@@ -642,14 +647,13 @@ public class PlayingListActivity extends Activity {
                             data.put("player_status", (Integer) status.status);
                         }
 
-                        // update actionbar
-                        mPlaybackItem.setVisible(true);
-                        mPlaybackItem.setIcon(R.drawable.actionbar_start);
-                        mPlaybackItem.getIntent().putExtra("player_status", status.status);
-
                         // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
+
+                        mPlaybackItem.setVisible(true);
+                        mPlaybackItem.setIcon(R.drawable.actionbar_start);
+                        mPlaybackItem.getIntent().putExtra("player_status", status.status);
 
                     }else if (status.status == PlayBackService.STA_PREPARING){
                         itemid = status.itemId;
@@ -659,12 +663,10 @@ public class PlayingListActivity extends Activity {
                             data = mPlaying_data.get(validpos);
                             data.put("player_status", (Integer) status.status);
                         }
-                        // update actionbar
-                        mPlaybackItem.setVisible(false);
-
                         // update listview
                         if (isVisiblePosition(validpos))
                             mMyadapter.notifyDataSetChanged();
+                        mPlaybackItem.setVisible(false);
                     }
                     break;
                 case MSG_ON_CLEAN_UP_ITEM_UI:

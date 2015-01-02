@@ -31,7 +31,8 @@ public class PlayBackService extends Service {
     //private Messenger mClient = null;
     private SparseArray <Messenger> mClients = null;
     private MediaPlayer mPlayback = null;
-
+    AudioManager mAudioManager = null;
+    AudioManager.OnAudioFocusChangeListener mAudioFocusChangerListener = null;
     /* Msg define */
     public final static int MSG_LOGIN = 1;
     public final static int MSG_LOGOUT = 2;
@@ -51,7 +52,6 @@ public class PlayBackService extends Service {
     public final static int STA_STARTED = 1;
     public final static int STA_PAUSED = 2;
     public final static int STA_PREPARING = 3;
-    //public final static int STA_BUFFERING = 0x7;
     public final static int STA_READY = 4;
     public final static int STA_ERROR = 5;
     public final static int STA_COMPLETED = 6;
@@ -81,6 +81,7 @@ public class PlayBackService extends Service {
                 mMp3Status.err_extra = extra;
                 mMp3Status.err_what  = what;
                 mMp3Status.updateStatus(PlayBackService.STA_ERROR,  mClients);
+                abandonAudioFocus();
                 return false;
             }
         });
@@ -91,8 +92,6 @@ public class PlayBackService extends Service {
             public void onBufferingUpdate(MediaPlayer mp, int percent) {
                 if (percent - mMp3Status.buffer_percent > 4){
                     mMp3Status.buffer_percent = percent;
-                    //mMp3Status.updateMP3BufferProgress(mClients);
-                    //Log.v(MyConstant.TAG_PLAYBACK, "Updated buffer percent : " + percent);
                 }
             }
         });
@@ -109,7 +108,7 @@ public class PlayBackService extends Service {
         mPlayback.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
-                //mMp3Status.updateStatus(PlayBackService.STA_COMPLETED, mClient);
+                abandonAudioFocus();
             }
         });
 
@@ -127,6 +126,20 @@ public class PlayBackService extends Service {
         mDownloadtask = new LinkedList<ContentValues>();
 
         mClients = new SparseArray<Messenger>();
+
+        mAudioManager = (AudioManager) this.getSystemService(Context.AUDIO_SERVICE);
+
+        mAudioFocusChangerListener = new AudioManager.OnAudioFocusChangeListener() {
+            @Override
+            public void onAudioFocusChange(int focusChange) {
+                if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT){
+                    // Pause playback
+                    pause();
+                } else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) {
+                    start();
+                }
+            }
+        };
 
         return START_STICKY;
     }
@@ -150,6 +163,14 @@ public class PlayBackService extends Service {
     public IBinder onBind(Intent intent) {
         // TODO: Return the communication channel to the service.
         return mMessenger.getBinder();
+    }
+
+    private int requestAudioFocus(){
+        return mAudioManager.requestAudioFocus(mAudioFocusChangerListener, AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
+    }
+
+    private void abandonAudioFocus(){
+        mAudioManager.abandonAudioFocus(mAudioFocusChangerListener);
     }
 
     /* playback function define */
@@ -192,7 +213,7 @@ public class PlayBackService extends Service {
         }
     }
 
-    private void paused () {
+    private void pause () {
         if (mMp3Status.canPaused()){
             if (mMp3Status.canPaused()){
                 mPlayback.pause();
@@ -446,10 +467,14 @@ public class PlayBackService extends Service {
                     play(url);
                     break;
                 case MSG_START:
-                    start();
+                    int result = requestAudioFocus();
+                    if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                        start();
+                    }
                     break;
                 case MSG_PAUSE:
-                    paused();
+                    pause();
+                    abandonAudioFocus();
                     break;
                 case MSG_SEEKTO:
                     seekTo(msg.arg1);

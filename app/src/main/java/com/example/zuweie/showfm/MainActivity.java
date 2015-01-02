@@ -150,6 +150,7 @@ public class MainActivity extends Activity {
                 it.putExtra("nvl", data.getAsInteger(Novel.ID));
                 it.putExtra("pm", MyConstant.PM_NOVEL);
                 it.putExtra("nvlf", data.getAsString(Novel.URL));
+                it.putExtra("nvltitle", data.getAsString(Novel.NAME));
                 MainActivity.this.startActivity(it);
             }
         });
@@ -541,7 +542,7 @@ public class MainActivity extends Activity {
             holder.textView.setText(name);
             holder.nvl_nj.setText(data.getAsString(Novel.NJNAME));
 
-            if (position <= 4){
+            if (position < 4){
                 holder.new_image.setVisibility(View.VISIBLE);
             }else{
                 holder.new_image.setVisibility(View.GONE);
