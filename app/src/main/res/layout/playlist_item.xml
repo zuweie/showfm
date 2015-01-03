@@ -9,12 +9,12 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/esm_item"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp">
+        android:layout_marginTop="@dimen/playing_list_esm_item_mt"
+        android:layout_marginBottom="@dimen/playing_list_esm_item_mb">
 
         <ImageView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="@dimen/playing_list_esm_item_status_width"
+            android:layout_height="@dimen/playing_list_esm_item_status_height"
             android:id="@+id/esm_status"/>
 
         <TextView
@@ -24,23 +24,22 @@
             android:text="Small Text"
             android:id="@+id/esm_title"
             android:textStyle="bold|normal"
-            android:textSize="15dp"
-            android:layout_marginLeft="5dp" />
-
+            android:textSize="@dimen/playing_list_esm_item_title_tsz"
+            android:layout_marginLeft="@dimen/playing_list_esm_item_title_ml" />
     </LinearLayout>
 
 
 
     <RelativeLayout
         android:layout_width="wrap_content"
-        android:layout_height="@dimen/playinglist_item_height"
+        android:layout_height="@dimen/playing_list_plm_item_height"
         android:id="@+id/plm_item"
-        android:paddingTop="10dp"
-        android:paddingBottom="10dp">
+        android:paddingTop="@dimen/playing_list_plm_item_pt"
+        android:paddingBottom="@dimen/playing_list_plm_item_pb">
 
         <ImageButton
-            android:layout_width="32dp"
-            android:layout_height="match_parent"
+            android:layout_width="@dimen/playing_list_plm_item_player_bt_width"
+            android:layout_height="@dimen/playing_list_plm_item_player_bt_height"
             android:id="@+id/plm_playerbt"
             android:layout_alignParentTop="true"
             android:layout_alignParentLeft="true"
@@ -58,10 +57,10 @@
             android:layout_alignParentTop="true"
             android:layout_toRightOf="@+id/plm_playerbt"
             android:layout_toEndOf="@+id/plm_playerbt"
-            android:layout_marginLeft="5dp"
-            android:layout_marginRight="5dp"
+            android:layout_marginLeft="@dimen/playing_list_plm_item_title_ml"
+            android:layout_marginRight="@dimen/playing_list_plm_item_title_mr"
             android:textStyle="bold"
-            android:paddingLeft="10dp" />
+            android:paddingLeft="@dimen/playing_list_plm_item_title_pl" />
 
         <SeekBar
             android:layout_width="match_parent"
@@ -71,19 +70,19 @@
             android:layout_below="@+id/plm_title"
             android:layout_alignLeft="@+id/plm_title"
             android:layout_alignStart="@+id/plm_title"
-            android:layout_marginTop="12dp" />
+            android:layout_marginTop="@dimen/playing_list_plm_item_player_skb_mt" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceSmall"
             android:text="@string/record_nj"
-            android:id="@+id/textView2"
-            android:textSize="10dp"
+            android:id="@+id/plm_nj_text"
+            android:textSize="@dimen/playing_list_plm_item_nj_text_size"
             android:layout_below="@+id/plm_player_skb"
             android:layout_alignLeft="@+id/plm_player_skb"
             android:layout_alignStart="@+id/plm_player_skb"
-            android:layout_marginTop="5dp" />
+            android:layout_marginTop="@dimen/playing_list_plm_item_nj_text_mt" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -93,8 +92,8 @@
             android:id="@+id/plm_rec_nj"
             android:textSize="12dp"
             android:layout_below="@+id/plm_player_skb"
-            android:layout_toRightOf="@+id/textView2"
-            android:layout_toEndOf="@+id/textView2"
+            android:layout_toRightOf="@+id/plm_nj_text"
+            android:layout_toEndOf="@+id/plm_nj_text"
             android:textStyle="bold"
             android:textColor="#ff2e1d89"
             android:layout_marginTop="3dp" />

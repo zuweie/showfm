@@ -1,7 +1,10 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools" android:layout_width="fill_parent"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    tools:context="com.example.zuweie.showfm.MainActivity">
+    android:id="@+id/container"
+    tools:context="com.example.zuweie.showfm.MainActivity"
+    tools:ignore="MergeRootFrame">
 
     <com.handmark.pulltorefresh.library.PullToRefreshGridView
         android:id="@+id/pull_refresh_grid"
@@ -10,7 +13,22 @@
         android:numColumns="auto_fit"
         android:verticalSpacing="1dp"
         android:horizontalSpacing="1dp"
-        android:layout_alignParentBottom="true">
-
+        android:layout_alignParentBottom="true"
+        android:layout_above="@+id/adFragment">
     </com.handmark.pulltorefresh.library.PullToRefreshGridView>
+
+    <!--
+    <fragment android:name="com.example.zuweie.showfm.MainActivity$PlaceholderFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/adFragment" />
+    -->
+
+    <fragment
+        android:id="@+id/adFragment"
+        android:name="com.example.zuweie.showfm.MainActivity$AdFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"/>
+
 </RelativeLayout>

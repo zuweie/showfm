@@ -13,7 +13,7 @@
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="@string/start_up_tips"
         android:id="@+id/start_up_text"
-        android:textSize="15dp"
+        android:textSize="@dimen/start_up_text_size"
         android:textIsSelectable="true"
         android:autoText="false"
         android:layout_alignParentBottom="true"
