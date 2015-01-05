@@ -10,11 +10,10 @@
         android:id="@+id/playing_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_alignParentBottom="true"
         android:layout_above="@+id/playing_list_adFragment"
         android:layout_marginLeft="@dimen/playing_list_ml"
-        android:layout_marginRight="@dimen/playing_list_mr"
-        android:layout_marginBottom="@dimen/playing_list_mb"
-        android:layout_marginTop="@dimen/playing_list_mt">
+        android:layout_marginRight="@dimen/playing_list_mr">
     </com.handmark.pulltorefresh.library.PullToRefreshListView>
 
     <fragment
