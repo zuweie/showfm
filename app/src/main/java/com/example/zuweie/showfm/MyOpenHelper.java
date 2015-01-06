@@ -20,6 +20,7 @@ public class MyOpenHelper extends SQLiteOpenHelper{
                                                  + Novel.NJID + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.NAME + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.URL  + " TEXT DEFAULT NULL, "
+                                                 + Novel.AUTHOR + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.BODY + " TEXT DEFAULT NULL, "
                                                  + Novel.POSTER + " TEXT DEFAULT NULL, "
                                                  + Novel.KEYWORD + " VARCHAR(255) DEFAULT NULL, "

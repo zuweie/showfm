@@ -29,6 +29,7 @@ public class Novel extends MyData{
     public final static String NJNAME = "nj_name";
     public final static String NJID = "nj_id";
     public final static String NAME = "novel_name";
+    public final static String AUTHOR = "author";
     public final static String URL  = "url";
     public final static String POSTER = "poster";
     public final static String BODY = "body";
@@ -61,6 +62,9 @@ public class Novel extends MyData{
 
         if (!jelem.isNull(Novel.NAME))
             data.put(Novel.NAME, jelem.getString(Novel.NAME));
+
+        if (!jelem.isNull(Novel.AUTHOR))
+            data.put(Novel.AUTHOR, jelem.getString(Novel.AUTHOR));
 
         if (!jelem.isNull(Novel.URL))
             data.put(Novel.URL, jelem.getString(Novel.URL));
@@ -109,6 +113,7 @@ public class Novel extends MyData{
         data.put(Novel.NJNAME, cursor.getString(cursor.getColumnIndex(Novel.NJNAME)));
         data.put(Novel.NAME, cursor.getString(cursor.getColumnIndex(Novel.NAME)));
         data.put(Novel.URL, cursor.getString(cursor.getColumnIndex(Novel.URL)));
+        data.put(Novel.AUTHOR, cursor.getString(cursor.getColumnIndex(Novel.AUTHOR)));
         data.put(Novel.BODY, cursor.getString(cursor.getColumnIndex(Novel.BODY)));
         data.put(Novel.POSTER, cursor.getString(cursor.getColumnIndex(Novel.POSTER)));
         data.put(Novel.KEYWORD, cursor.getString(cursor.getColumnIndex(Novel.KEYWORD)));

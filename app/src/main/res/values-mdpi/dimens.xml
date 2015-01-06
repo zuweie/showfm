@@ -25,6 +25,32 @@
     <dimen name="playing_list_mt">16dp</dimen>
     <dimen name="playing_list_mb">16dp</dimen>
 
+    <dimen name="playing_list_header_pt">10dp</dimen>
+    <dimen name="playing_list_header_pb">10dp</dimen>
+
+    <dimen name="playing_list_header_content_cover_height">120dp</dimen>
+    <dimen name="playing_list_header_content_cover_width">80dp</dimen>
+    <dimen name="playing_list_header_content_cover_mt">5dp</dimen>
+
+    <dimen name="playing_list_header_content_title_ml">8dp</dimen>
+
+    <dimen name="playing_list_header_author_width">16dp</dimen>
+    <dimen name="playing_list_header_author_height">16dp</dimen>
+    <dimen name="playing_list_header_author_ml">3dp</dimen>
+    <dimen name="playing_list_header_author_mt">5dp</dimen>
+
+    <dimen name="playing_list_header_ac_ml">3dp</dimen>
+    <dimen name="playing_list_header_ac_mt">5dp</dimen>
+
+    <dimen name="playing_list_header_speaker_width">16dp</dimen>
+    <dimen name="playing_list_header_speaker_height">16dp</dimen>
+    <dimen name="playing_list_header_speaker_ml">3dp</dimen>
+    <dimen name="playing_list_header_speaker_mt">7dp</dimen>
+
+    <dimen name="playing_list_header_content_nj_ml">4dp</dimen>
+    <dimen name="playing_list_header_content_nj_mt">4dp</dimen>
+    <dimen name="playing_list_header_content_nj_tsz">12dp</dimen>
+
     <dimen name="playing_list_esm_item_mt">10dp</dimen>
     <dimen name="playing_list_esm_item_mb">10dp</dimen>
 

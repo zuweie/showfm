@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="@dimen/playing_list_header_pt"
+    android:paddingBottom="@dimen/playing_list_header_pb"
+    android:clickable="false"
+    android:nestedScrollingEnabled="false">
+
+    <ImageView
+        android:layout_width="@dimen/playing_list_header_content_cover_width"
+        android:layout_height="@dimen/playing_list_header_content_cover_height"
+        android:id="@+id/content_cover"
+        android:layout_marginTop="@dimen/playing_list_header_content_cover_mt"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Medium Text"
+        android:id="@+id/content_title"
+        android:layout_marginLeft="@dimen/playing_list_header_content_title_ml"
+        android:layout_alignTop="@+id/content_cover"
+        android:layout_toRightOf="@+id/content_cover"
+        android:layout_toEndOf="@+id/content_cover"
+        android:textColor="#ffcc0000"
+        android:textStyle="bold" />
+
+    <ImageView
+        android:layout_width="@dimen/playing_list_header_author_width"
+        android:layout_height="@dimen/playing_list_header_author_height"
+        android:id="@+id/author"
+        android:layout_below="@+id/content_title"
+        android:layout_marginLeft="@dimen/playing_list_header_author_ml"
+        android:layout_alignLeft="@+id/content_title"
+        android:layout_alignStart="@+id/content_title"
+        android:background="@drawable/author"
+        android:layout_marginTop="@dimen/playing_list_header_author_mt" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Small Text"
+        android:id="@+id/content_author_category"
+        android:layout_marginLeft="@dimen/playing_list_header_ac_ml"
+        android:layout_below="@+id/content_title"
+        android:layout_toRightOf="@+id/author"
+        android:layout_toEndOf="@+id/author"
+        android:textColor="#ff6585a0"
+        android:layout_marginTop="@dimen/playing_list_header_ac_mt"
+        android:textStyle="bold" />
+
+    <ImageView
+        android:layout_width="@dimen/playing_list_header_speaker_width"
+        android:layout_height="@dimen/playing_list_header_speaker_height"
+        android:id="@+id/speaker"
+        android:layout_below="@+id/author"
+        android:layout_marginLeft="@dimen/playing_list_header_speaker_ml"
+        android:background="@drawable/speaker"
+        android:layout_marginTop="@dimen/playing_list_header_speaker_mt"
+        android:layout_alignLeft="@+id/content_title"
+        android:layout_alignStart="@id/content_title" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Small Text"
+        android:id="@+id/content_nj"
+        android:layout_marginLeft="@dimen/playing_list_header_content_nj_ml"
+        android:layout_below="@+id/content_author_category"
+        android:layout_toRightOf="@+id/speaker"
+        android:layout_toEndOf="@+id/speaker"
+        android:textColor="#ff008000"
+        android:layout_marginTop="@dimen/playing_list_header_content_nj_mt"
+        android:textStyle="bold"
+        android:textSize="@dimen/playing_list_header_content_nj_tsz" />
+
+    <!--
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Small Text"
+        android:id="@+id/content_body"
+        android:layout_below="@+id/content_nj"
+        android:layout_marginLeft="5dp"
+        android:layout_toRightOf="@+id/content_cover"
+        android:layout_toEndOf="@+id/content_cover" />
+
+    -->
+</RelativeLayout>

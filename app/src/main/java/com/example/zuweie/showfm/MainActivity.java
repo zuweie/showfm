@@ -99,6 +99,13 @@ public class MainActivity extends Activity {
         Novel novel = new Novel();
         mNovel_data = novel.loadData(this, null, null, null, "updated desc");
 
+        // get the novel category
+        List<String> categorys = new ArrayList<String>();
+        for (int i=0; i<mNovel_data.size(); ++i){
+            if (!categorys.contains(mNovel_data.get(i).getAsString(Novel.CATEGORY)))
+                categorys.add(mNovel_data.get(i).getAsString(Novel.CATEGORY));
+        }
+
         // Init the Ui data
         this.getActionBar().setHomeButtonEnabled(true);
         String coverfolder = this.getFilesDir().getAbsolutePath();
@@ -154,6 +161,13 @@ public class MainActivity extends Activity {
                 it.putExtra("pm", MyConstant.PM_NOVEL);
                 it.putExtra("nvlf", data.getAsString(Novel.URL));
                 it.putExtra("nvltitle", data.getAsString(Novel.NAME));
+                it.putExtra("nvlbody", data.getAsString(Novel.BODY));
+                it.putExtra("nvlupdated",data.getAsLong(Novel.UPDATED));
+                it.putExtra("nvlstatus", data.getAsInteger(Novel.STATUS));
+                it.putExtra("njname", data.getAsString(Novel.NJNAME));
+                it.putExtra("nvlauthor", data.getAsString(Novel.AUTHOR));
+                it.putExtra("nvlcategory", data.getAsString(Novel.CATEGORY));
+                it.putExtra("cover_exists", data.getAsBoolean("cover_exists"));
                 MainActivity.this.startActivity(it);
             }
         });

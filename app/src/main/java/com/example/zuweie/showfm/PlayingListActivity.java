@@ -7,7 +7,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.drm.DrmStore;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -31,17 +31,13 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
 
-import org.w3c.dom.Text;
-
+import java.io.File;
 import java.security.NoSuchAlgorithmException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 
@@ -160,7 +156,61 @@ public class PlayingListActivity extends Activity {
 
             }
         });
+        /* init the playlist view */
         mPlayinglistView = mPullToRefreshListView.getRefreshableView();
+
+
+        if (isNovelMode()){
+            // init the cover header
+            View header = this.getLayoutInflater().inflate(R.layout.playlist_header, null);
+
+            // init the cover
+            ImageView cover = (ImageView) header.findViewById(R.id.content_cover);
+
+            if (this.getIntent().getBooleanExtra("cover_exists", false)){
+                String coverfile = getFilesDir().getAbsolutePath()+"/"+mNovelId + ".jpg";
+                File file = new File(coverfile);
+                if (file.exists()){
+                    String uri = file.toURI().toString();
+                    cover.setImageURI(Uri.parse(uri));
+                }else{
+                    cover.setImageResource(R.drawable.nvl_def_bg);
+                }
+            }else{
+                cover.setImageResource(R.drawable.nvl_def_bg);
+            }
+
+            // init the title
+            TextView content_title = (TextView) header.findViewById(R.id.content_title);
+            content_title.setText(this.getIntent().getStringExtra("nvltitle"));
+
+            // init content_author_category
+            TextView author = (TextView) header.findViewById(R.id.content_author_category);
+            String ac = this.getIntent().getStringExtra("nvlauthor") + "/"+this.getIntent().getStringExtra("nvlcategory");
+            author.setText(ac);
+
+            // init nj name
+            TextView njname = (TextView) header.findViewById(R.id.content_nj);
+            String nj = this.getIntent().getStringExtra("njname");
+
+            if (this.getIntent().getIntExtra("nvlstatus",0) == 1){
+                nj += " ["+this.getResources().getText(R.string.nvl_status_1)+"]";
+            }else if (this.getIntent().getIntExtra("nvlstatus", 0) ==2){
+                nj += " ["+this.getResources().getText(R.string.nvl_status_2)+"]";
+            }
+            njname.setText(nj);
+
+            // init
+            /*
+            TextView content_body = (TextView) header.findViewById(R.id.content_body);
+            String body = this.getIntent().getStringExtra("nvlbody");
+            body = "       "+body.substring(0, 21)+"...";
+            content_body.setText(body);
+            */
+            mPlayinglistView.addHeaderView(header);
+        }
+
+
         mMyadapter = new MyAdapter();
         mPlayinglistView.setAdapter(mMyadapter);
 
@@ -168,25 +218,26 @@ public class PlayingListActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 // get item data
-                Adapter adapter = parent.getAdapter();
-                ContentValues data = null;
+                if (id >=0){
+                    Adapter adapter = parent.getAdapter();
+                    ContentValues data = null;
+                    if (mExtendItemPos > 0){
+                        // close the last item
+                        data = (ContentValues)adapter.getItem(mExtendItemPos);
+                        data.put("item_mode", 0);
+                    }
 
-                if (mExtendItemPos > 0){
-                    // close the last item
-                    data = (ContentValues)adapter.getItem(mExtendItemPos);
-                    data.put("item_mode", 0);
-                }
+                    // extend the new item
+                    data = (ContentValues)adapter.getItem(position);
+                    mExtendItemPos = position;
+                    data.put("item_mode", 1);
 
-                // extend the new item
-                data = (ContentValues)adapter.getItem(position);
-                mExtendItemPos = position;
-                data.put("item_mode", 1);
-
-                Message msg = Message.obtain(null, MSG_ON_EXTEND_ITEM);
-                try {
-                    mItSelf.send(msg);
-                } catch (RemoteException e) {
-                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                    Message msg = Message.obtain(null, MSG_ON_EXTEND_ITEM);
+                    try {
+                        mItSelf.send(msg);
+                    } catch (RemoteException e) {
+                        Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                    }
                 }
             }
         });
@@ -209,7 +260,7 @@ public class PlayingListActivity extends Activity {
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {}
         });
     }
-
+    /* init playing list view */
     @Override
     protected void onStart(){
         super.onStart();

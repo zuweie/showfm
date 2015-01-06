@@ -88,10 +88,10 @@ public class StartupActivity extends Activity {
                             vs.add(v);
                         }
                         novel.updataNovelDate(StartupActivity.this, vs);
-                        novel.setMark(StartupActivity.this);
-                        publishProgress(getResources().getText(R.string.startup_progress_4));
-                        Thread.sleep(2000);
                     }
+                    novel.setMark(StartupActivity.this);
+                    publishProgress(getResources().getText(R.string.startup_progress_4));
+                    Thread.sleep(2000);
                 }else{
                     publishProgress(getResources().getText(R.string.startup_progress_4));
                     Thread.sleep(5000);
