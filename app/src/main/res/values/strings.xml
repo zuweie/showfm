@@ -9,7 +9,7 @@
     <string name="title_activity_startup"></string>
     <string name="load_data_ok">数据加载Ok</string>
     <string name="load_data_unusual">数据加载异常</string>
-    <string name="start_up_tips">姐姐陪你收听ShowFm喔...</string>
+    <string name="start_up_tips">ShowFm...</string>
     <string name="title_activity_record">record</string>
     <string name="title_activity_playing_list">PlayingListActivity</string>
     <string name="load_data_status_ok">ok</string>
@@ -22,11 +22,12 @@
     <string name="startup_progress_1">下载数据...</string>
     <string name="startup_progress_2">下载完成,配置中...</string>
     <string name="startup_progress_3">数据更新中...</string>
-    <string name="startup_progress_4">姐姐陪你收听ShowFm喔...</string>
+    <string name="startup_progress_4">ShowFm...</string>
     <string name="dl_server_err">服务器异常，请稍后再试！</string>
     <string name="title_activity_main_activity2">MainActivity2</string>
     <string name="nvl_status_1">连载中</string>
     <string name="nvl_status_2">已完结</string>
+    <string name="category_all">全部</string>
     <string name="banner_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
 
 </resources>

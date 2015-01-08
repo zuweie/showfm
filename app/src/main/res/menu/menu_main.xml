@@ -7,12 +7,21 @@
         android:showAsAction="never" />
 
     <item android:id="@+id/action_play"
-        android:title="player"
+        android:title="Player"
         android:icon="@drawable/actionbar_start"
         android:showAsAction="always"/>
+
+    <item android:id="@+id/action_category"
+        android:title="Category"
+        android:icon="@drawable/category"
+        android:showAsAction="always" >
+        <menu></menu>
+    </item>
 
     <item android:id="@+id/action_exit"
           android:title="Exit"
           android:icon="@drawable/exit"
-          android:showAsAction="ifRoom"/>
+          android:showAsAction="always"/>
+
+
 </menu>

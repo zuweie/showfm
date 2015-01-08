@@ -21,6 +21,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -56,8 +58,11 @@ public class MainActivity extends Activity {
     private PullToRefreshGridView mPullToRefreshGridView;
     private GridView mGridView;
     private List<ContentValues> mNovel_data = null;
+    private List<ContentValues> mPickup_data = null;
     private MyAdapter mAdapter;
     private MenuItem mPlaybackItem;
+    private CharSequence mPickUp;
+    private List<String> mCategory;
 
     /* service data */
     private Messenger mPlayback = null;
@@ -98,12 +103,14 @@ public class MainActivity extends Activity {
         // Init the Data
         Novel novel = new Novel();
         mNovel_data = novel.loadData(this, null, null, null, "updated desc");
+        mPickup_data = new LinkedList<ContentValues>();
+        mPickup_data.addAll(mNovel_data);
 
         // get the novel category
-        List<String> categorys = new ArrayList<String>();
+        mCategory = new LinkedList<String>();
         for (int i=0; i<mNovel_data.size(); ++i){
-            if (!categorys.contains(mNovel_data.get(i).getAsString(Novel.CATEGORY)))
-                categorys.add(mNovel_data.get(i).getAsString(Novel.CATEGORY));
+            if (!mCategory.contains(mNovel_data.get(i).getAsString(Novel.CATEGORY)))
+                mCategory.add(mNovel_data.get(i).getAsString(Novel.CATEGORY));
         }
 
         // Init the Ui data
@@ -146,6 +153,7 @@ public class MainActivity extends Activity {
         /* Start the PlaybackService*/
 
         // Init the UI
+        mPickUp = this.getResources().getString(R.string.category_all);
         mPullToRefreshGridView = (PullToRefreshGridView) findViewById(R.id.pull_refresh_grid);
         mGridView = mPullToRefreshGridView.getRefreshableView();
         mAdapter = new MyAdapter();
@@ -228,6 +236,12 @@ public class MainActivity extends Activity {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         mPlaybackItem = menu.findItem(R.id.action_play);
         mPlaybackItem.setVisible(false);
+        MenuItem CategoryItem = menu.findItem(R.id.action_category);
+        SubMenu subMenu = CategoryItem.getSubMenu();
+        subMenu.add(R.string.category_all);
+        for(int i=0; i<mCategory.size(); ++i){
+            subMenu.add(mCategory.get(i));
+        }
         return true;
     }
 
@@ -259,6 +273,22 @@ public class MainActivity extends Activity {
                 }catch (RemoteException e){
                     Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                 }
+            }
+        }else if (id == 0){
+            CharSequence category = item.getTitle();
+            if (!mPickUp.equals(category)){
+                mPickUp = item.getTitle();
+                mPickup_data.clear();
+                if (mPickUp.equals(getResources().getString(R.string.category_all))){
+                    mPickup_data.addAll(mNovel_data);
+                }else{
+                    for (int i=0; i<mNovel_data.size(); ++i){
+                        if (mPickUp.equals(mNovel_data.get(i).getAsString(Novel.CATEGORY))){
+                            mPickup_data.add(mNovel_data.get(i));
+                        }
+                    }
+                }
+                mAdapter.notifyDataSetChanged();
             }
         }
         return super.onOptionsItemSelected(item);
@@ -549,7 +579,6 @@ public class MainActivity extends Activity {
                         } catch (IOException e1) {
                             e1.printStackTrace();
                         }
-
                 }
             }
            return ret;
@@ -585,6 +614,7 @@ public class MainActivity extends Activity {
 
         private Context context;
         class Holder {
+            View      nvl_item;
             ImageView new_image;
             ImageView imageView;
             TextView  textView;
@@ -594,15 +624,16 @@ public class MainActivity extends Activity {
 
         @Override
         public int getCount() {
-            if (mNovel_data == null)
+            if (mPickup_data == null)
                 return 0;
             else
-                return mNovel_data.size();
+                return mPickup_data.size();
         }
 
         @Override
         public Object getItem(int position) {
-            return mNovel_data.get(position);
+            //return mNovel_data.get(position);
+            return mPickup_data.get(position);
         }
 
         @Override
@@ -618,7 +649,7 @@ public class MainActivity extends Activity {
                 LayoutInflater inflater = MainActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.novel_item, null);
                 holder = new Holder();
-
+                holder.nvl_item  = (View)convertView.findViewById(R.id.nvl_item);
                 holder.new_image = (ImageView)convertView.findViewById(R.id.nvl_new_img);
                 holder.imageView = (ImageView)convertView.findViewById(R.id.nvl_img_view);
                 holder.textView  = (TextView)convertView.findViewById(R.id.nvl_text_view);
@@ -630,6 +661,8 @@ public class MainActivity extends Activity {
 
             // render the item
             ContentValues data = (ContentValues)this.getItem(position);
+
+            holder.nvl_item.setVisibility(View.VISIBLE);
             String name = data.getAsInteger(Novel.ID) + "." +data.getAsString(Novel.NAME);
             holder.textView.setText(name);
             holder.nvl_nj.setText(data.getAsString(Novel.NJNAME));
@@ -658,6 +691,7 @@ public class MainActivity extends Activity {
             }else{
                 holder.imageView.setImageResource(R.drawable.nvl_def_bg);
             }
+
             return convertView;
         }
     }
