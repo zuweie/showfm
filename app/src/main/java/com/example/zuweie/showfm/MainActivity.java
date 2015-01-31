@@ -24,16 +24,20 @@ import android.view.MenuItem;
 import android.view.SubMenu;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Adapter;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.dodowaterfall.widget.ScaleImageView;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshGridView;
+import com.huewu.pla.lib.internal.PLA_AdapterView;
 
 import org.json.JSONException;
 
@@ -48,18 +52,26 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ThreadPoolExecutor;
 
-public class MainActivity extends Activity {
+import me.maxwin.view.XListView;
+
+
+public class MainActivity extends Activity implements XListView.IXListViewListener {
 
     /* data define */
     public static ClientID mClientid = new ClientID();
 
-    private PullToRefreshGridView mPullToRefreshGridView;
-    private GridView mGridView;
+    /* 使用 waterfall 替代 PullToRefreshGridView */
+    //private PullToRefreshGridView mPullToRefreshGridView;
+    //private GridView mGridView;
+
+    /* 使用 waterfall */
+    private XListView mXListView;
+    private StaggeredAdapter mAdapter;
+
     private List<ContentValues> mNovel_data = null;
     private List<ContentValues> mPickup_data = null;
-    private MyAdapter mAdapter;
+    //private MyAdapter mAdapter;
     private MenuItem mPlaybackItem;
     private CharSequence mPickUp;
     private List<String> mCategory;
@@ -93,12 +105,10 @@ public class MainActivity extends Activity {
         public void onServiceDisconnected(ComponentName name) {}
     };
 
-
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_main_2);
 
         // Init the Data
         Novel novel = new Novel();
@@ -116,7 +126,7 @@ public class MainActivity extends Activity {
         // Init the Ui data
         this.getActionBar().setHomeButtonEnabled(true);
         String coverfolder = this.getFilesDir().getAbsolutePath();
-        List<ContentValues> loadCoverParams = new ArrayList<ContentValues>();
+        List<ContentValues> loadMissedCover = new LinkedList<ContentValues>();
 
 
         for(int i=0; i<mNovel_data.size(); ++i){
@@ -135,15 +145,15 @@ public class MainActivity extends Activity {
                 param.put("pic_name", data.getAsString(Novel.ID)+".jpg");
                 param.put("item_id", data.getAsInteger(Novel.ID));
                 param.put("item_pos", data.getAsInteger("item_pos"));
-                loadCoverParams.add(param);
+                loadMissedCover.add(param);
             }
 
         }
 
         // if some cover need to load then create the load task to load it
-        if (!loadCoverParams.isEmpty()){
+        if (!loadMissedCover.isEmpty()){
             //new GetNovelCoverTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR,loadCoverParams);
-            new GetNovelCoverTask().execute(loadCoverParams);
+            new GetNovelCoverTask().execute(loadMissedCover);
         }
 
         mItself = new Messenger(new MainHandler());
@@ -153,6 +163,7 @@ public class MainActivity extends Activity {
         /* Start the PlaybackService*/
 
         // Init the UI
+        /*
         mPickUp = this.getResources().getString(R.string.category_all);
         mPullToRefreshGridView = (PullToRefreshGridView) findViewById(R.id.pull_refresh_grid);
         mGridView = mPullToRefreshGridView.getRefreshableView();
@@ -191,7 +202,38 @@ public class MainActivity extends Activity {
 
             }
         });
+        */
 
+        /* Ui init use waterfall list view */
+        mPickUp = this.getResources().getString(R.string.category_all);
+        mXListView = (XListView)findViewById(R.id.waterfall_listview);
+        mXListView.setPullLoadEnable(false);
+        mXListView.setXListViewListener(this);
+        mXListView.setOnItemClickListener(new PLA_AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(PLA_AdapterView<?> parent, View view, int position, long id) {
+                Adapter adapter = parent.getAdapter();
+                ContentValues data = (ContentValues)adapter.getItem(position);
+                Intent it = new Intent(MainActivity.this, PlayingListActivity.class);
+                it.putExtra("nvl", data.getAsInteger(Novel.ID));
+                it.putExtra("pm", MyConstant.PM_NOVEL);
+                it.putExtra("nvlf", data.getAsString(Novel.URL));
+                it.putExtra("nvltitle", data.getAsString(Novel.NAME));
+                it.putExtra("nvlbody", data.getAsString(Novel.BODY));
+                it.putExtra("nvlupdated",data.getAsLong(Novel.UPDATED));
+                it.putExtra("nvlstatus", data.getAsInteger(Novel.STATUS));
+                it.putExtra("njname", data.getAsString(Novel.NJNAME));
+                it.putExtra("nvlauthor", data.getAsString(Novel.AUTHOR));
+                it.putExtra("nvlcategory", data.getAsString(Novel.CATEGORY));
+                it.putExtra("cover_exists", data.getAsBoolean("cover_exists"));
+                it.putExtra("cover_height", data.getAsInteger("cover_height"));
+                it.putExtra("cover_width", data.getAsInteger("cover_width"));
+                MainActivity.this.startActivity(it);
+            }
+        });
+        mAdapter = new StaggeredAdapter();
+        mXListView.setAdapter(mAdapter);
+        /* Ui init use waterfall list view */
     }
 
     @Override
@@ -300,6 +342,17 @@ public class MainActivity extends Activity {
         return;
     }
 
+    @Override
+    public void onRefresh() {
+        Toast.makeText(MainActivity.this, R.string.novel_newest, Toast.LENGTH_LONG).show();
+        mXListView.stopRefresh();
+    }
+
+    @Override
+    public void onLoadMore() {
+        return;
+    }
+
     public boolean connectService(){
         return mPlayback != null;
     }
@@ -366,20 +419,6 @@ public class MainActivity extends Activity {
         return;
     }
 
-    /*
-    public static class PlaceholderFragment extends Fragment {
-
-        public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_my, container, false);
-            return rootView;
-        }
-    }
-    */
     public static class AdFragment extends Fragment {
 
         private AdView mAdView;
@@ -440,7 +479,7 @@ public class MainActivity extends Activity {
         }
 
     }
-
+    /* 用于下拉更新小说列表
     private class RefreshNovelTask extends AsyncTask<Void, Void, Void> {
 
         @Override
@@ -476,10 +515,11 @@ public class MainActivity extends Activity {
 
         @Override
         protected void onPostExecute(Void result){
-            mPullToRefreshGridView.onRefreshComplete();
+            // mPullToRefreshGridView.onRefreshComplete();
             mAdapter.notifyDataSetChanged();
         }
     }
+    */
 
     private class GetNovelCoverTask extends AsyncTask <List<ContentValues>, Void, Integer> {
 
@@ -492,7 +532,8 @@ public class MainActivity extends Activity {
             FileOutputStream fos = null;
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             Integer ret = 0;
-
+            Novel novel = new Novel();
+            ContentValues toUpdate = new ContentValues();
             byte[] buffer =  new byte[1024 * 100];
             for(int i=0; i<params.size(); ++i){
                 try {
@@ -513,7 +554,7 @@ public class MainActivity extends Activity {
                     //Bitmap bitmap = BitmapFactory.decodeByteArray(bmdata, 0, bmdata.length);
                     Bitmap bitmap = BitmapFactory.decodeStream(connection.getInputStream());
 
-                    int bmsz = 1024 * 8; // 8k
+                    int bmsz = 1024 * 4; // 将图片不断压缩，控制在4k的大小左右；
                     boolean loadCoverok = false;
                     if (bitmap != null && bitmap.getByteCount() > bmsz ){
                         int q = 90;
@@ -557,6 +598,15 @@ public class MainActivity extends Activity {
                             ContentValues itemdata = mNovel_data.get(valipos);
                             // put the update data
                             itemdata.put("cover_exists", true);
+                            //itemdata.put("cover_height", bitmap.getHeight());
+                            // update the cover size to db
+                            toUpdate.clear();
+                            toUpdate.put(Novel.ID, itemdata.getAsInteger(Novel.ID));
+                            toUpdate.put(Novel.COVER_WIDTH, bitmap.getWidth());
+                            toUpdate.put(Novel.COVER_HEIGHT, bitmap.getHeight());
+                            novel.updateCoverSz(MainActivity.this, toUpdate);
+                            itemdata.put("cover_height", bitmap.getHeight());
+                            itemdata.put("cover_width", bitmap.getWidth());
                         }
                         ret += 1;
                     }
@@ -584,12 +634,13 @@ public class MainActivity extends Activity {
            return ret;
         }
 
+        /*
         @Override
         protected void onPostExecute(Integer result){
-            // TODO : 分析数据， 将其丢入数据库。
             if (result > 0 && mAdapter != null)
                 mAdapter.notifyDataSetChanged();
         }
+        */
     }
 
     class MainHandler extends Handler {
@@ -610,6 +661,7 @@ public class MainActivity extends Activity {
         }
     }
 
+    /* 使用waterfall的 Adapter 这个暂时不用。谢谢 ！
     class MyAdapter extends BaseAdapter {
 
         private Context context;
@@ -693,6 +745,106 @@ public class MainActivity extends Activity {
             }
 
             return convertView;
+        }
+    }
+    */
+    class StaggeredAdapter extends BaseAdapter {
+
+        @Override
+        public int getCount() {
+            if (mPickup_data == null)
+                return 0;
+            else
+                return mPickup_data.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return mPickup_data.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            ContentValues values = (ContentValues)this.getItem(position);
+            return values.getAsInteger(Novel.ID);
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            Holder holder;
+            if (convertView == null){
+                holder = new Holder();
+                LayoutInflater inflater = MainActivity.this.getLayoutInflater();
+                convertView = inflater.inflate(R.layout.novel_item, null);
+                holder.nvl_item  = (View)convertView.findViewById(R.id.nvl_item);
+                holder.new_image = (ImageView)convertView.findViewById(R.id.nvl_new_img);
+                holder.imageView = (ScaleImageView)convertView.findViewById(R.id.nvl_img_view);
+                holder.textView  = (TextView)convertView.findViewById(R.id.nvl_text_view);
+                holder.nvl_nj    = (TextView)convertView.findViewById(R.id.nvl_nj);
+                convertView.setTag(holder);
+            }else{
+                holder = (Holder)convertView.getTag();
+            }
+
+            // render the holder
+            ContentValues data = (ContentValues)this.getItem(position);
+            String name = data.getAsInteger(Novel.ID) + "." +data.getAsString(Novel.NAME);
+            holder.textView.setText(name);
+            holder.nvl_nj.setText(data.getAsString(Novel.NJNAME));
+            // make it gone
+            holder.new_image.setVisibility(View.GONE);
+
+            if (data.getAsBoolean("cover_exists")){
+                if (data.get("cover_uri") == null){
+                    String coverfile = getFilesDir().getAbsolutePath()+"/"+data.getAsString(Novel.ID) + ".jpg";
+                    File file = new File(coverfile);
+                    if (file.exists()){
+                        String uri = file.toURI().toString();
+                        int pic_h = data.getAsInteger("cover_height");
+                        int pic_w = data.getAsInteger("cover_width");
+                        int w = (int) MainActivity.this.getResources().getDimension(R.dimen.novel_item_2_width);
+                        holder.imageView.setImageWidth(w);
+                        holder.imageView.setImageHeight((w * pic_h)/pic_w);
+                        holder.imageView.setImageURI(Uri.parse(uri));
+                        data.put("cover_uri", uri);
+                    }else{
+                        data.put("cover_exists", false);
+                    }
+                }else{
+                    int pic_h = data.getAsInteger("cover_height");
+                    int pic_w = data.getAsInteger("cover_width");
+                    int w = (int)MainActivity.this.getResources().getDimension(R.dimen.novel_item_2_width);
+                    holder.imageView.setImageWidth(w);
+                    holder.imageView.setImageHeight((w * pic_h)/pic_w);
+                    holder.imageView.setImageURI(Uri.parse(data.getAsString("cover_uri")));
+                }
+            }else{
+                holder.imageView.setImageResource(R.drawable.nvl_def_bg);
+            }
+
+
+            /*
+            if (data.getAsBoolean("cover_exists")){
+                String coverfile = getFilesDir().getAbsolutePath() + "/"+data.getAsString(Novel.ID)+".jpg";
+                File file = new File(coverfile);
+                if (file.exists()){
+                    String uri = file.toURI().toString();
+                    holder.imageView.setImageURI(Uri.parse(uri));
+
+                }
+            }else{
+                holder.imageView.setImageResource(R.drawable.nvl_def_bg);
+            }
+            */
+            return convertView;
+        }
+
+        class Holder {
+            View      nvl_item;
+            ImageView new_image;
+            ScaleImageView imageView;
+            TextView  textView;
+            TextView  nvl_nj;
         }
     }
 }

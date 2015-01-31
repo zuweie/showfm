@@ -37,6 +37,8 @@ public class Novel extends MyData{
     public final static String STATUS = "status";
     public final static String KEYWORD = "keyword";
     public final static String CATEGORY = "category";
+    public final static String COVER_HEIGHT = "cover_height";
+    public final static String COVER_WIDTH = "cover_width";
 
     private SimpleDateFormat df = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private SimpleDateFormat df2 = new SimpleDateFormat("yyyy/MM/dd");
@@ -120,6 +122,8 @@ public class Novel extends MyData{
         data.put(Novel.CATEGORY, cursor.getString(cursor.getColumnIndex(Novel.CATEGORY)));
         data.put(Novel.UPDATED, cursor.getLong(cursor.getColumnIndex(Novel.UPDATED)));
         data.put(Novel.STATUS, cursor.getInt(cursor.getColumnIndex(Novel.STATUS)));
+        data.put(Novel.COVER_HEIGHT, cursor.getInt(cursor.getColumnIndex(Novel.COVER_HEIGHT)));
+        data.put(Novel.COVER_WIDTH, cursor.getInt(cursor.getColumnIndex(Novel.COVER_WIDTH)));
         return data;
     }
 
@@ -143,6 +147,15 @@ public class Novel extends MyData{
         cursor.close();
         db.close();
         return data;
+    }
+
+    public int updateCoverSz(Context c, ContentValues data){
+        MyOpenHelper dbh = new MyOpenHelper(c);
+        SQLiteDatabase db = dbh.getWritableDatabase();
+        String wherecase = Novel.ID +" = \'"+ data.getAsInteger(Novel.ID)+"\'";
+        int r = db.update(TAB, data, wherecase, null);
+        db.close();
+        return  r;
     }
 
     public int updataNovelDate(Context c, List<ContentValues> datas){

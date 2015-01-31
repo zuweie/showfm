@@ -31,6 +31,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.dodowaterfall.widget.ScaleImageView;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
@@ -162,6 +163,7 @@ public class PlayingListActivity extends Activity {
 
         if (isNovelMode()){
             // init the cover header
+            /*
             View header = this.getLayoutInflater().inflate(R.layout.playlist_header, null);
 
             // init the cover
@@ -201,12 +203,34 @@ public class PlayingListActivity extends Activity {
             njname.setText(nj);
 
             // init
-            /*
+
             TextView content_body = (TextView) header.findViewById(R.id.content_body);
             String body = this.getIntent().getStringExtra("nvlbody");
             body = "       "+body.substring(0, 21)+"...";
             content_body.setText(body);
             */
+
+            /* Playlist header just use a big pic */
+            View header = this.getLayoutInflater().inflate(R.layout.playlist_header_2, null);
+            ScaleImageView img = (ScaleImageView) header.findViewById(R.id.nvl_img_view);
+
+            if (this.getIntent().getBooleanExtra("cover_exists", false)){
+                String coverfile = getFilesDir().getAbsolutePath()+"/"+mNovelId + ".jpg";
+                File file = new File(coverfile);
+                if (file.exists()){
+                    String uri = file.toURI().toString();
+                    img.setImageURI(Uri.parse(uri));
+                    int cover_width = (int)this.getResources().getDimension(R.dimen.playing_list_header_2_width);
+                    int cover_height = (int)this.getResources().getDimension(R.dimen.playing_list_header_2_height);
+                    img.setImageWidth(cover_width);
+                    img.setImageHeight(cover_height);
+                }else{
+                    img.setImageResource(R.drawable.nvl_def_bg);
+                }
+            }else{
+                img.setImageResource(R.drawable.nvl_def_bg);
+            }
+
             mPlayinglistView.addHeaderView(header);
         }
 

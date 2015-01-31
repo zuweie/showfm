@@ -26,6 +26,8 @@ public class MyOpenHelper extends SQLiteOpenHelper{
                                                  + Novel.KEYWORD + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.CATEGORY + " VARCHAR(255) DEFAULT NULL, "
                                                  + Novel.UPDATED + " UNSIGNED BIG INT DEFAULT 0, "
+                                                 + Novel.COVER_HEIGHT + " INTEGER DEFAULT 64, "
+                                                 + Novel.COVER_WIDTH + " INTEGER DEFAULT 64, "
                                                  + Novel.STATUS + " TINYINT DEFAULT 0"
                                                  + " ); ";
 

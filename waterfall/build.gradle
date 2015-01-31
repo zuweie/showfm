@@ -1,11 +1,10 @@
-apply plugin: 'com.android.application'
+apply plugin: 'com.android.library'
 
 android {
-    compileSdkVersion 21
-    buildToolsVersion "19.1.0"
-
+    compileSdkVersion 17
+    buildToolsVersion '19.1.0'
     defaultConfig {
-        applicationId "com.example.zuweie.showfm"
+        applicationId "com.huewu.pla.waterfall"
         minSdkVersion 15
         targetSdkVersion 21
         versionCode 1
@@ -17,11 +16,10 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    productFlavors {
+    }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':library')
-    compile 'com.google.android.gms:play-services:6.+'
-    compile project(':waterfall')
 }

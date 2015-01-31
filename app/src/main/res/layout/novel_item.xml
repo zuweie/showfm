@@ -2,17 +2,16 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/nvl_item"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/nvl_item_bg">
 
-    <ImageView
-        android:layout_width="@dimen/novel_item_nvl_img_view_width"
-        android:layout_height="@dimen/novel_item_nvl_img_view_height"
+    <com.dodowaterfall.widget.ScaleImageView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:id="@+id/nvl_img_view"
         android:layout_gravity="center_horizontal"
-        android:layout_alignParentTop="true"
-        android:layout_alignLeft="@+id/nvl_text_view"
-        android:layout_alignStart="@+id/nvl_text_view"
-        android:layout_marginTop="@dimen/novel_item_nvl_img_view_mt" />
+        android:layout_alignTop="@+id/nvl_new_img"
+        android:layout_centerHorizontal="true" />
 
     <TextView
         android:layout_width="@dimen/novel_item_text_width"
