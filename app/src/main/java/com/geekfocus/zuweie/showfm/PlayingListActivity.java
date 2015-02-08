@@ -490,7 +490,7 @@ public class PlayingListActivity extends Activity {
             return true;
         else
             return false;
-        
+
     }
 
     private String coverMs2Str(int ms){
