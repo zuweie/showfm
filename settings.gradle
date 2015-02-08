@@ -1,2 +1,2 @@
-include ':app', 'waterfall'
+include ':app', ':waterfall', ':blurring', ':circleimageview'
 include ':library'

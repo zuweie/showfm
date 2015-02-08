@@ -11,14 +11,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentBottom="true"
-        android:layout_above="@+id/playing_list_adFragment"
-        android:layout_marginLeft="@dimen/playing_list_ml"
-        android:layout_marginRight="@dimen/playing_list_mr">
+        android:layout_above="@+id/playing_list_adFragment">
     </com.handmark.pulltorefresh.library.PullToRefreshListView>
 
     <fragment
         android:id="@+id/playing_list_adFragment"
-        android:name="com.example.zuweie.showfm.PlayingListActivity$AdFragment"
+        android:name="com.geekfocus.zuweie.showfm.PlayingListActivity$AdFragment"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"/>

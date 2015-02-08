@@ -1,19 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.zuweie.showfm" >
+    package="com.geekfocus.zuweie.showfm" >
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
-        <meta-data android:name="com.google.android.gms.version"
+        <meta-data
+            android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
+
         <activity
-            android:name="com.example.zuweie.showfm.StartupActivity"
+            android:name="com.geekfocus.zuweie.showfm.StartupActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -22,26 +26,32 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.zuweie.showfm.MainActivity"
+            android:name="com.geekfocus.zuweie.showfm.MainActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme" >
         </activity>
         <activity
-            android:name="com.example.zuweie.showfm.PlayingListActivity"
+            android:name="com.geekfocus.zuweie.showfm.PlayingListActivity"
             android:theme="@style/AppTheme" >
         </activity>
-
-        <activity android:name="com.google.android.gms.ads.AdActivity"
+        <activity
+            android:name="com.google.android.gms.ads.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:theme="@android:style/Theme.Translucent" />
 
         <service
-            android:name="com.example.zuweie.showfm.PlayBackService"
+            android:name="com.geekfocus.zuweie.showfm.PlayBackService"
             android:enabled="true"
             android:exported="true" >
         </service>
 
+        <activity
+            android:name="com.geekfocus.zuweie.showfm.WeiboCommentsActivity"
+            android:theme="@style/AppTheme"
+            android:label="@string/title_activity_weibo_comments" >
+        </activity>
 
+        <meta-data android:value="54d038cafd98c5d26b000ed1" android:name="UMENG_APPKEY"></meta-data>
     </application>
 
 </manifest>

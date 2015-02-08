@@ -84,7 +84,10 @@
     <orderEntry type="library" exported="" name="support-annotations-21.0.0" level="project" />
     <orderEntry type="library" exported="" name="support-v4-21.0.0" level="project" />
     <orderEntry type="library" exported="" name="play-services-6.5.87" level="project" />
+    <orderEntry type="library" exported="" name="analytics-5.4.1" level="project" />
+    <orderEntry type="module" module-name="blurring" exported="" />
     <orderEntry type="module" module-name="library" exported="" />
+    <orderEntry type="module" module-name="circleimageview" exported="" />
     <orderEntry type="module" module-name="waterfall" exported="" />
   </component>
 </module>

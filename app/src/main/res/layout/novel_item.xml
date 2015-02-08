@@ -36,7 +36,7 @@
         android:layout_alignParentTop="true"
         android:layout_alignLeft="@+id/nvl_img_view"
         android:layout_alignStart="@+id/nvl_img_view"
-        android:background="@drawable/novel_new"
+        android:background="@drawable/playing"
         android:layout_marginTop="@dimen/novel_item_nvl_new_img_mt" />
 
     <TextView
