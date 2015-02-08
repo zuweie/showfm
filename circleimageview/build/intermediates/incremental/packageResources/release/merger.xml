@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<merger version="3"><dataSet config="main"><source path="/home/zuweie/AndroidStudioProjects/Showfm/circleimageview/src/main/res"><file path="/home/zuweie/AndroidStudioProjects/Showfm/circleimageview/src/main/res/values/attrs.xml" qualifiers=""><declare-styleable name="CircleImageView">
-        <attr format="dimension" name="border_width"/>
-        <attr format="color" name="border_color"/>
-    </declare-styleable></file></source><source path="/home/zuweie/AndroidStudioProjects/Showfm/circleimageview/build/generated/res/rs/release"/><source path="/home/zuweie/AndroidStudioProjects/Showfm/circleimageview/build/generated/res/generated/release"/></dataSet><dataSet config="release"><source path="/home/zuweie/AndroidStudioProjects/Showfm/circleimageview/src/release/res"/></dataSet><mergedItems><configuration qualifiers=""><declare-styleable name="CircleImageView"><attr format="dimension" name="border_width"/><attr format="color" name="border_color"/></declare-styleable></configuration></mergedItems></merger>
