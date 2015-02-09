@@ -68,10 +68,13 @@
         android:id="@+id/nj_name_tx"
         android:textColor="#ff1aa31a"
         android:layout_marginLeft="@dimen/playing_list_header2_nj_name_tx_ml"
+        android:paddingBottom="@dimen/playing_list_header2_nj_name_tx_pb"
         android:layout_alignBottom="@+id/imageView2"
         android:layout_toRightOf="@+id/imageView2"
         android:layout_toEndOf="@+id/imageView2"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:textSize="@dimen/playing_list_header2_nj_name_tx_tsz"
+        android:textIsSelectable="true" />
     <!--
     <ImageButton
         android:layout_width="@dimen/playing_list_header2_nvl_comment_bt_width"
