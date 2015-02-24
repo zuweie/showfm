@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -15,6 +16,7 @@ import android.os.Messenger;
 import android.os.RemoteException;
 import android.util.Log;
 import android.util.SparseArray;
+import android.widget.Toast;
 
 import org.json.JSONException;
 
@@ -494,7 +496,8 @@ public class PlayBackService extends Service {
                     Record record = new Record();
                     long time = record.getMark(PlayBackService.this, msg.arg1);
                     if (Myfunc.diffHour(time)>=6 && mDoingWhat.getLoadingRec() == false){
-                        new GetRecordListTask().execute(msg.arg1);
+                        new GetRecordListTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, msg.arg1);
+                        Toast.makeText(PlayBackService.this, R.string.load_record_list, Toast.LENGTH_LONG).show();
                     } else if (mDoingWhat.getLoadingRec() == false){
                         List<ContentValues> datas = loadReclist(msg.arg1, false);
                         msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
@@ -656,8 +659,13 @@ public class PlayBackService extends Service {
     class GetRecordListTask extends AsyncTask<Integer, Integer, List<ContentValues>>{
 
         @Override
-        protected List<ContentValues> doInBackground(Integer[] params) {
+        protected void onPreExecute(){
+            //Toast.makeText(PlayBackService.this, R.string.load_record_list, Toast.LENGTH_SHORT).show();
+        }
 
+        @Override
+        protected List<ContentValues> doInBackground(Integer[] params) {
+            Log.v(MyConstant.TAG_NOVEL, "loading Record list...");
             mDoingWhat.setLoadingRec(true);
             Integer novelid = params[0];
             List<ContentValues> newdatas = loadReclist(novelid, true);
@@ -668,6 +676,7 @@ public class PlayBackService extends Service {
         @Override
         protected void onPostExecute (List<ContentValues> result){
             if (result != null){
+                Log.v(MyConstant.TAG_NOVEL, "load done!");
                 Message msg = Message.obtain(null,PlayingListActivity.MSG_ON_LOAD_RECORD_LIST_DONE);
                 msg.obj = result;
                 sendMessage2Client(msg, mClients.get(PlayingListActivity.mClientId.getClientID()));

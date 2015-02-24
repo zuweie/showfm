@@ -6,7 +6,7 @@
     android:paddingLeft="10dp"
     android:paddingRight="10dp">
 
-    <LinearLayout
+    <RelativeLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -16,8 +16,10 @@
 
         <ImageView
             android:layout_width="@dimen/playing_list_esm_item_status_width"
-            android:layout_height="match_parent"
-            android:id="@+id/esm_status"/>
+            android:layout_height="@dimen/playing_list_esm_item_status_height"
+            android:layout_centerVertical="true"
+            android:id="@+id/esm_status"
+            android:src="@drawable/esm_unread" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -26,9 +28,11 @@
             android:text="Small Text"
             android:id="@+id/esm_title"
             android:textStyle="bold|normal"
+            android:layout_toRightOf="@+id/esm_status"
+            android:layout_toEndOf="@id/esm_status"
             android:textSize="@dimen/playing_list_esm_item_title_tsz"
             android:layout_marginLeft="@dimen/playing_list_esm_item_title_ml" />
-    </LinearLayout>
+    </RelativeLayout>
 
 
 
@@ -41,11 +45,9 @@
 
         <ImageButton
             android:layout_width="@dimen/playing_list_plm_item_player_bt_width"
-            android:layout_height="match_parent"
+            android:layout_height="@dimen/playing_list_plm_item_player_bt_height"
+            android:layout_centerVertical="true"
             android:id="@+id/plm_playerbt"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true"
             android:background="#00ffa92d"
             android:src="@drawable/play" />
 

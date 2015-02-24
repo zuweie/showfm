@@ -11,6 +11,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.AnimationDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -76,10 +77,10 @@ public class PlayingListActivity extends Activity {
     private PullToRefreshListView mPullToRefreshListView;
     private ListView mPlayinglistView;
     private MyAdapter mMyadapter;
-    private Integer mExtendItemPos = 0;
+    private Integer mExtendItemPos = -1;
+    private Integer mscrolltoPos = -1;
     private MenuItem mPlaybackItem;
-    private HeadHolder mHeaderHolder;
-
+    //private HeadHolder mHeaderHolder;
     /* PlayBack data */
     private Messenger mPlayback;
     private Messenger mItSelf;
@@ -138,6 +139,7 @@ public class PlayingListActivity extends Activity {
     public final static int MSG_ON_MP3BUFFERING_UPDATED = 12;
     public final static int MSG_ON_CURRENT_STATUS = 13;
     public final static int MSG_ON_CLEAN_UP_ITEM_UI = 14;
+    public final static int MSG_ON_SCROLLTO_POS = 15;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,7 +156,6 @@ public class PlayingListActivity extends Activity {
         }
 
         /* init the UI */
-        //mHandler = new PlayingListHandler();
         this.getActionBar().setHomeButtonEnabled(true);
         this.getActionBar().setIcon(R.drawable.activity_back);
 
@@ -181,119 +182,6 @@ public class PlayingListActivity extends Activity {
         });
         /* init the playlist view */
         mPlayinglistView = mPullToRefreshListView.getRefreshableView();
-
-
-        if (isNovelMode()){
-
-            /* Playlist header just use a big pic */
-            View header = this.getLayoutInflater().inflate(R.layout.playlist_header_2, null);
-            mHeaderHolder = new HeadHolder();
-
-            mHeaderHolder.nvl_bg_im = (ScaleImageView) header.findViewById(R.id.nvl_img_view);
-            mHeaderHolder.nvl_wbg_im = (ScaleImageView) header.findViewById(R.id.white_img_view);
-
-            mHeaderHolder.nj_name_tx = (TextView)header.findViewById(R.id.nj_name_tx);
-            mHeaderHolder.nvl_author_tx = (TextView) header.findViewById(R.id.nvl_name_tx);
-
-            String author = this.getIntent().getStringExtra("nvlauthor");
-            String category = this.getIntent().getStringExtra("nvlcategory");
-            mHeaderHolder.nvl_author_tx.setText(author + " / " + category);
-
-            String njname = this.getIntent().getStringExtra("njname");
-            String status = this.getIntent().getStringExtra("nvlstatus");
-            mHeaderHolder.nj_name_tx.setText(njname + " [" + status + "]");
-
-            /*
-            mHeaderHolder.nvl_comments_bt = (ImageButton) header.findViewById(R.id.nvl_comments_bt);
-            mHeaderHolder.nvl_comments_bt.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    Intent intent = new Intent();
-                    intent.setAction("android.intent.action.VIEW");
-                    Uri content_url = Uri.parse("http://yjh.geekfocus.cc/index.php/Showfm/Public/novelComments/id/"+mNovelId);
-                    intent.setData(content_url);
-                    startActivity(intent);
-                }
-            });
-            */
-            /* 获取 NJ 的头像 */
-            mHeaderHolder.nj_avatar_img = (CircleImageView)header.findViewById(R.id.nj_avatar_img_view);
-            String njid = this.getIntent().getStringExtra("njid");
-            String avatarfile = this.getFilesDir().getAbsolutePath()+"/avatar_"+njid+".jpg";
-            File file = new File(avatarfile);
-            if (file.exists()){
-                mHeaderHolder.nj_avatar_img.setImageURI(Uri.parse(avatarfile));
-            }else{
-                mHeaderHolder.nj_avatar_img.setImageResource(R.drawable.no_avatar);
-                new LoadAvatarTask(mHeaderHolder.nj_avatar_img, njid).execute(this.getIntent().getStringExtra("njavatar"));
-            }
-            mHeaderHolder.nj_avatar_img.setBorderWidth(3);
-            mHeaderHolder.nj_avatar_img.setBorderColor(Color.WHITE);
-            /* 获取 NJ 的头像 end */
-
-            if (this.getIntent().getBooleanExtra("cover_exists", false)){
-                String coverfile = getFilesDir().getAbsolutePath()+"/"+mNovelId + ".jpg";
-                file = new File(coverfile);
-                if (file.exists()){
-
-                    int cover_width = getIntent().getIntExtra("cover_width", 400);
-                    int cover_height = getIntent().getIntExtra("cover_height", 200);
-
-                    float whk = (float)cover_width / (float)cover_height;
-
-                    if (whk >= 1.4){
-                        mHeaderHolder.nvl_bg_im.setImageWidth(cover_width);
-                        mHeaderHolder.nvl_bg_im.setImageHeight(cover_height);
-                    }else{
-                        mHeaderHolder.nvl_bg_im.setImageWidth(cover_width);
-                        float wk = 0.5f;
-                        cover_height = (int)(wk * cover_width);
-                        mHeaderHolder.nvl_bg_im.setImageHeight(cover_height);
-                    }
-                    Log.v(MyConstant.TAG_NOVEL, "cover_width : "+cover_width);
-                    Log.v(MyConstant.TAG_NOVEL, "cover_height : "+cover_height);
-
-                    File blurbg = new File (getFilesDir().getAbsolutePath()+"/blur_"+mNovelId+".jpg");
-                    if (!blurbg.exists()){
-                        /* had nod blur file*/
-                        Bitmap cover = BitmapFactory.decodeFile(coverfile);
-
-                        Bitmap blur =  blur(cover, mHeaderHolder.nvl_bg_im);
-                        try {
-                            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                            FileOutputStream fos = openFileOutput("blur_"+mNovelId+".jpg", Context.MODE_PRIVATE);
-                            blur.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-                            fos.write(bos.toByteArray());
-                            fos.close();
-                        } catch (FileNotFoundException e) {
-                            Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-                        } catch (IOException e) {
-                            Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-                        }
-                    }else{
-                       mHeaderHolder.nvl_bg_im.setImageURI(Uri.parse(blurbg.toURI().toString()));
-                    }
-
-                    mHeaderHolder.nvl_wbg_im.setImageWidth(416);
-                    float k = (float)(416) / (float)(cover_width);
-                    float bgwk = 0.45f;
-
-                    int bgw = (int)(( cover_height * bgwk ) * k);
-
-                    mHeaderHolder.nvl_wbg_im.setImageHeight(bgw);
-
-                    mHeaderHolder.nvl_wbg_im.setBackgroundResource(R.drawable.nvl_w_bg);
-
-                }else{
-                    mHeaderHolder.nvl_bg_im.setImageResource(R.drawable.nvl_def_bg);
-                }
-            }else{
-                mHeaderHolder.nvl_bg_im.setImageResource(R.drawable.nvl_def_bg);
-            }
-            mPlayinglistView.addHeaderView(header);
-            mPlayinglistView.setHeaderDividersEnabled(true);
-
-        }
 
 
         mMyadapter = new MyAdapter();
@@ -486,7 +374,7 @@ public class PlayingListActivity extends Activity {
         int first = mPlayinglistView.getFirstVisiblePosition();
         int last  = mPlayinglistView.getLastVisiblePosition();
 
-        if (position >= first && position <= last)
+        if (position >= first-1 && position <= last)
             return true;
         else
             return false;
@@ -600,7 +488,6 @@ public class PlayingListActivity extends Activity {
 
                 // playing mode
                 holder.plm = convertView.findViewById(R.id.plm_item);
-
                 holder.plm_title = (TextView)convertView.findViewById(R.id.plm_title);
                 holder.plm_rec_nj = (TextView)convertView.findViewById(R.id.plm_rec_nj);
                 //holder.plm_rec_updated = (TextView)convertView.findViewById(R.id.plm_rec_updated);
@@ -702,16 +589,29 @@ public class PlayingListActivity extends Activity {
 
                     // set imgb here
                     if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
+                        // stop the loading icon
+                        stopLoadingIcon(holder);
                         holder.plm_playerbt.setImageResource(R.drawable.play);
                     }else if (data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                        // stop the loading icon
+                        stopLoadingIcon(holder);
                         holder.plm_playerbt.setImageResource(R.drawable.play_err);
                     }else if (data.getAsInteger("player_status") == PlayBackService.STA_PAUSED
                             || data.getAsInteger("player_status") == PlayBackService.STA_COMPLETED){
+                        // stop the loading icon
+                        stopLoadingIcon(holder);
                         holder.plm_playerbt.setImageResource(R.drawable.play);
                     }else if (data.getAsInteger("player_status") == PlayBackService.STA_STARTED){
+                        // stop the loading icon
+                        stopLoadingIcon(holder);
                         holder.plm_playerbt.setImageResource(R.drawable.pause);
                     }else if (data.getAsInteger("player_status") == PlayBackService.STA_PREPARING){
-                        holder.plm_playerbt.setImageResource(R.drawable.play_in_perpare);
+                       // holder.plm_playerbt.setImageResource(R.drawable.play_in_perpare);
+                        if (holder.recLoading == null){
+                            holder.plm_playerbt.setImageResource(R.drawable.rec_load);
+                            holder.recLoading = (AnimationDrawable) holder.plm_playerbt.getDrawable();
+                            holder.recLoading.start();
+                        }
                     }
 
                     holder.plm_seekbar.setMax(data.getAsInteger("player_duration"));
@@ -750,7 +650,12 @@ public class PlayingListActivity extends Activity {
             }
             return convertView;
         }
-
+        public void stopLoadingIcon(Holder holder){
+            if (holder.recLoading != null && holder.recLoading.isRunning()){
+                holder.recLoading.stop();
+                holder.recLoading = null;
+            }
+        }
         class Holder {
             View esm;
             View plm;
@@ -763,6 +668,7 @@ public class PlayingListActivity extends Activity {
             TextView plm_rec_nj;
             //TextView plm_rec_updated;
             TextView plm_rec_timer;
+            AnimationDrawable recLoading;
            // TextView plm_playtime;
         }
 
@@ -783,11 +689,14 @@ public class PlayingListActivity extends Activity {
                     if (status.status == PlayBackService.STA_PAUSED){
                         mPlaybackItem.setVisible(true);
                         mPlaybackItem.setIcon(R.drawable.actionbar_start);
+                        mscrolltoPos = status.itemPos;
                     }else if (status.status == PlayBackService.STA_STARTED){
                         mPlaybackItem.setVisible(true);
                         mPlaybackItem.setIcon(R.drawable.actionbar_pause);
+                        mscrolltoPos = status.itemPos;
                     }else{
                         mPlaybackItem.setVisible(false);
+                        mscrolltoPos = -1;
                     }
                     mPlaybackItem.getIntent().putExtra("player_status", status.status);
                     break;
@@ -924,6 +833,20 @@ public class PlayingListActivity extends Activity {
                     mPullToRefreshListView.onRefreshComplete();
                     mMyadapter.notifyDataSetChanged();
                     mExtendItemPos = -1;
+                    if (PlayingListActivity.this.getIntent().getBooleanExtra("scrollto", false) ){
+                        Message locateMsag = Message.obtain();
+                        locateMsag.what = MSG_ON_SCROLLTO_POS;
+                        try {
+                            mItSelf.send(locateMsag);
+                        } catch (RemoteException e) {
+                            Log.e(MyConstant.TAG_NOVEL, e.getMessage());
+                        }
+                    }
+                    break;
+                case MSG_ON_SCROLLTO_POS:
+                    if (mscrolltoPos > 0){
+                        mPlayinglistView.setSelection(mscrolltoPos);
+                    }
                     break;
                 case MSG_ON_DOWNLOAD_PROGRESS:
                     itemid = msg.arg1;
@@ -1049,12 +972,14 @@ public class PlayingListActivity extends Activity {
         String njid;
     }
 
+    /*
     class HeadHolder {
         ScaleImageView nvl_bg_im;
-        ScaleImageView nvl_wbg_im;
+        //ScaleImageView nvl_wbg_im;
         CircleImageView nj_avatar_img;
-        TextView nvl_author_tx;
-        TextView nj_name_tx;
+        //TextView nvl_author_tx;
+        //TextView nj_name_tx;
         ImageButton nvl_comments_bt;
     }
+    */
 }

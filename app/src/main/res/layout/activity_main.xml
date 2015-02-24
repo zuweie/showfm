@@ -5,7 +5,7 @@
     android:id="@+id/container"
     tools:context="com.example.zuweie.showfm.MainActivity"
     tools:ignore="MergeRootFrame">
-
+    <!--
     <com.handmark.pulltorefresh.library.PullToRefreshGridView
         android:id="@+id/pull_refresh_grid"
         android:layout_width="match_parent"
@@ -17,12 +17,12 @@
         android:layout_above="@+id/adFragment">
     </com.handmark.pulltorefresh.library.PullToRefreshGridView>
 
-    <!--
+
     <fragment android:name="com.example.zuweie.showfm.MainActivity$PlaceholderFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_above="@+id/adFragment" />
-    -->
+
 
     <fragment
         android:id="@+id/adFragment"
@@ -30,5 +30,5 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"/>
-
+ -->
 </RelativeLayout>

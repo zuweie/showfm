@@ -2,10 +2,11 @@
 
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent" >
+    android:layout_height="match_parent">
 
     <me.maxwin.view.XListView
         android:id="@+id/waterfall_listview"
+        android:background="@drawable/novel_bg"
         android:scrollbars="vertical"
         android:fastScrollEnabled="true"
         android:layout_width="match_parent"

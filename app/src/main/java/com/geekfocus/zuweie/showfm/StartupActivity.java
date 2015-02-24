@@ -89,6 +89,8 @@ public class StartupActivity extends Activity {
                     publishProgress(getResources().getText(R.string.startup_progress_1));
                     String date = Myfunc.ltime2Sdate(time);
                     String api = "http://www.showfm.net/api/novel.asp?after="+ Uri.encode(date)+"&state0=1&state1=2";
+                    Log.v(MyConstant.TAG_NOVEL, "update api: "+ api);
+                    //publishProgress("api:"+api);
                     List<ContentValues> datas = novel.getData(api);
                     publishProgress(getResources().getText(R.string.startup_progress_2));
                     if (datas != null && !datas.isEmpty()) {
@@ -106,7 +108,7 @@ public class StartupActivity extends Activity {
                     }
                     novel.setMark(StartupActivity.this);
                     publishProgress(getResources().getText(R.string.startup_progress_4));
-                    Thread.sleep(2000);
+                    //Thread.sleep(2000);
                 }else{
                     publishProgress(getResources().getText(R.string.startup_progress_4));
                     Thread.sleep(5000);
@@ -131,16 +133,20 @@ public class StartupActivity extends Activity {
         @Override
         protected void onPostExecute (Integer result){
 
+
+
             if (result == 0){
                 Toast.makeText(StartupActivity.this, R.string.load_data_ok, Toast.LENGTH_SHORT).show();
             }else{
                 Toast.makeText(StartupActivity.this, R.string.load_data_unusual, Toast.LENGTH_SHORT).show();
             }
 
+
             // TODO : jump to main Activity;
             Intent intent = new Intent(StartupActivity.this, MainActivity.class);
             StartupActivity.this.startActivity(intent);
             StartupActivity.this.finish();
         }
+
     }
 }

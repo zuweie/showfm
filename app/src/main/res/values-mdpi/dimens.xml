@@ -85,11 +85,11 @@
     <dimen name="playing_list_esm_item_mt">10dp</dimen>
     <dimen name="playing_list_esm_item_mb">10dp</dimen>
 
-    <dimen name="playing_list_esm_item_status_height">30dp</dimen>
-    <dimen name="playing_list_esm_item_status_width">30dp</dimen>
+    <dimen name="playing_list_esm_item_status_height">16dp</dimen>
+    <dimen name="playing_list_esm_item_status_width">16dp</dimen>
 
     <dimen name="playing_list_esm_item_title_tsz">15dp</dimen>
-    <dimen name="playing_list_esm_item_title_ml">5dp</dimen>
+    <dimen name="playing_list_esm_item_title_ml">8dp</dimen>
 
     <dimen name="playing_list_plm_item_pt">10dp</dimen>
     <dimen name="playing_list_plm_item_pb">10dp</dimen>

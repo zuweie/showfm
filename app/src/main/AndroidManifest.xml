@@ -27,17 +27,24 @@
         </activity>
         <activity
             android:name="com.geekfocus.zuweie.showfm.MainActivity"
-            android:label="@string/app_name"
+            android:label="@string/showfm"
             android:theme="@style/AppTheme" >
         </activity>
         <activity
             android:name="com.geekfocus.zuweie.showfm.PlayingListActivity"
             android:theme="@style/AppTheme" >
         </activity>
+
+        <activity
+            android:name="com.geekfocus.zuweie.showfm.NovelDetailActivity"
+            android:theme="@style/AppTheme">
+        </activity>
+
         <activity
             android:name="com.google.android.gms.ads.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:theme="@android:style/Theme.Translucent" />
+
 
         <service
             android:name="com.geekfocus.zuweie.showfm.PlayBackService"
@@ -45,13 +52,11 @@
             android:exported="true" >
         </service>
 
-        <activity
-            android:name="com.geekfocus.zuweie.showfm.WeiboCommentsActivity"
-            android:theme="@style/AppTheme"
-            android:label="@string/title_activity_weibo_comments" >
-        </activity>
+        <meta-data
+            android:name="UMENG_APPKEY"
+            android:value="54d038cafd98c5d26b000ed1" />
 
-        <meta-data android:value="54d038cafd98c5d26b000ed1" android:name="UMENG_APPKEY"></meta-data>
+
     </application>
 
 </manifest>

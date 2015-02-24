@@ -2,4 +2,6 @@
 <resources>
     <color name="esm_item_grey">#ffc6b8df</color>
     <color name="esm_item_black">#000000</color>
+    <color name="novel_detail_cim_border1">#96b1b718</color>
+    <color name="novel_detail_cim_border2">#96c4c84a</color>
 </resources>

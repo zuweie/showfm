@@ -8,7 +8,7 @@ public class ClientID {
     private int myid = 0;
 
     public ClientID(){
-        myid = id_counter++;
+        myid = ++id_counter;
     }
 
    public int getClientID() {

@@ -1,13 +1,12 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    tools:context="com.example.zuweie.showfm.PlayingListActivity">
-
+    tools:context="com.geekfocus.zuweie.showfm.NovelDetailActivity">
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"
         android:orderInCategory="100"
-    android:showAsAction="never" />
+        android:showAsAction="never" />
 
-    <item android:id="@+id/action_player"
+    <item android:id="@+id/action_play"
         android:title="play"
         android:icon="@drawable/actionbar_start"
         android:showAsAction="always"/>

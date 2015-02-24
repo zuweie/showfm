@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.AnimationDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -78,7 +79,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
     private List<String> mCategory;
 
     private Integer mCurrPlayingNovelId = -1;
-
+    private AnimationDrawable mHeaderIcon = null;
     /* service data */
     private Messenger mPlayback = null;
     private Messenger mItself = null;
@@ -131,7 +132,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
 
         // Init the Ui data
         this.getActionBar().setHomeButtonEnabled(true);
-        this.getActionBar().setIcon(R.drawable.activity_back);
+        //this.getActionBar().setIcon(R.drawable.showfm);
 
         String coverfolder = this.getFilesDir().getAbsolutePath();
         List<ContentValues> loadMissedCover = new LinkedList<ContentValues>();
@@ -222,7 +223,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
             public void onItemClick(PLA_AdapterView<?> parent, View view, int position, long id) {
                 Adapter adapter = parent.getAdapter();
                 ContentValues data = (ContentValues)adapter.getItem(position);
-                Intent it = new Intent(MainActivity.this, PlayingListActivity.class);
+                Intent it = new Intent(MainActivity.this, NovelDetailActivity.class);
                 it.putExtra("nvl", data.getAsInteger(Novel.ID));
                 it.putExtra("pm", MyConstant.PM_NOVEL);
                 it.putExtra("nvlf", data.getAsString(Novel.URL));
@@ -308,7 +309,27 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
 
         //noinspection SimplifiableIfStatement
         if (id == android.R.id.home){
-            this.moveTaskToBack(false);
+            ContentValues data = this.getCurrentPlayingNovel();
+            if (data != null){
+                Intent it = new Intent(MainActivity.this, PlayingListActivity.class);
+                it.putExtra("nvl", data.getAsInteger(Novel.ID));
+                it.putExtra("pm", MyConstant.PM_NOVEL);
+                it.putExtra("nvlf", data.getAsString(Novel.URL));
+                it.putExtra("nvltitle", data.getAsString(Novel.NAME));
+                it.putExtra("nvlbody", data.getAsString(Novel.BODY));
+                it.putExtra("nvlupdated",data.getAsLong(Novel.UPDATED));
+                it.putExtra("nvlstatus", data.getAsInteger(Novel.STATUS) == 1? "连载中":"已完结");
+                it.putExtra("njname", data.getAsString(Novel.NJNAME));
+                it.putExtra("nvlauthor", data.getAsString(Novel.AUTHOR));
+                it.putExtra("nvlcategory", data.getAsString(Novel.CATEGORY));
+                it.putExtra("njid", data.getAsString(Novel.NJID));
+                it.putExtra("njavatar", data.getAsString(Novel.NJAVATAR));
+                it.putExtra("cover_exists", data.getAsBoolean("cover_exists"));
+                it.putExtra("cover_height", data.getAsInteger("cover_height"));
+                it.putExtra("cover_width", data.getAsInteger("cover_width"));
+                it.putExtra("scrollto",true);
+                MainActivity.this.startActivity(it);
+            }
         }else if (id == R.id.action_exit){
             this.finish();
         }else if (id == R.id.action_play){
@@ -356,7 +377,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
 
     @Override
     public void onRefresh() {
-        Toast.makeText(MainActivity.this, R.string.novel_newest, Toast.LENGTH_LONG).show();
+        //Toast.makeText(MainActivity.this, R.string.novel_newest, Toast.LENGTH_LONG).show();
         mXListView.stopRefresh();
     }
 
@@ -406,10 +427,28 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
         }
         return -1;
     }
+
+    private ContentValues getCurrentPlayingNovel(){
+        if (mCurrPlayingNovelId > 0) {
+            for (int i = 0; i < mNovel_data.size(); ++i) {
+                if (mCurrPlayingNovelId == mNovel_data.get(i).getAsInteger(Novel.ID)) {
+                    return mNovel_data.get(i);
+                }
+            }
+        }
+        return  null;
+    }
+
     private void updateActionBarMenu(int what){
 
         switch(what){
             case PlayBackService.STA_STARTED:
+                // set the header icon
+                if (mHeaderIcon == null) {
+                    mHeaderIcon = (AnimationDrawable) this.getResources().getDrawable(R.drawable.cd_rotate);
+                    this.getActionBar().setIcon(mHeaderIcon);
+                }
+                mHeaderIcon.start();
                 mPlaybackItem.setIcon(R.drawable.actionbar_pause);
                 if (mPlaybackItem.getIntent() == null){
                     mPlaybackItem.setIntent(new Intent());
@@ -418,6 +457,11 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
                 mPlaybackItem.setVisible(true);
                 break;
             case PlayBackService.STA_PAUSED:
+                if (mHeaderIcon == null){
+                    mHeaderIcon = (AnimationDrawable) this.getResources().getDrawable(R.drawable.cd_rotate);
+                    this.getActionBar().setIcon(mHeaderIcon);
+                }
+                mHeaderIcon.stop();
                 mPlaybackItem.setIcon(R.drawable.actionbar_start);
                 if (mPlaybackItem.getIntent() == null){
                     mPlaybackItem.setIntent(new Intent());
@@ -426,6 +470,11 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
                 mPlaybackItem.setVisible(true);
                 break;
             default:
+                if (mHeaderIcon != null) {
+                    mHeaderIcon.stop();
+                    mHeaderIcon = null;
+                }
+                this.getActionBar().setIcon(R.drawable.showfm);
                 mPlaybackItem.setVisible(false);
         }
         return;
@@ -783,7 +832,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
                 LayoutInflater inflater = MainActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.novel_item, null);
                 holder.nvl_item  = (View)convertView.findViewById(R.id.nvl_item);
-                holder.new_image = (ImageView)convertView.findViewById(R.id.nvl_new_img);
+                //holder.new_image = (ImageView)convertView.findViewById(R.id.nvl_new_img);
                 holder.imageView = (ScaleImageView)convertView.findViewById(R.id.nvl_img_view);
                 holder.textView  = (TextView)convertView.findViewById(R.id.nvl_text_view);
                 holder.nvl_nj    = (TextView)convertView.findViewById(R.id.nvl_nj);
@@ -798,12 +847,13 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
             holder.textView.setText(name);
             holder.nvl_nj.setText(data.getAsString(Novel.NJNAME));
             // make it gone
+            /*
             if (mCurrPlayingNovelId == data.getAsInteger(Novel.ID)){
                 holder.new_image.setVisibility(View.VISIBLE);
             }else {
                 holder.new_image.setVisibility(View.GONE);
             }
-
+            */
             if (data.getAsBoolean("cover_exists")){
                 if (data.get("cover_uri") == null){
                     String coverfile = getFilesDir().getAbsolutePath()+"/"+data.getAsString(Novel.ID) + ".jpg";
@@ -858,7 +908,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
 
         class Holder {
             View      nvl_item;
-            ImageView new_image;
+            //ImageView new_image;
             ScaleImageView imageView;
             TextView  textView;
             TextView  nvl_nj;
