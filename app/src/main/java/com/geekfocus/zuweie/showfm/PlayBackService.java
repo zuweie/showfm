@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
@@ -21,7 +20,6 @@ import android.widget.Toast;
 import org.json.JSONException;
 
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Timer;
@@ -325,7 +323,8 @@ public class PlayBackService extends Service {
         if (remote){
 
             String date = Myfunc.ltime2Sdate(record.getMark(PlayBackService.this, novelid));
-            String api = "http://www.showfm.net/api/record.asp?after="+Uri.encode(date)+"&perpage=9999&novel_id="+novelid;
+            String api = Myfunc.getRecordApi()+"?after="+Uri.encode(date)+"&perpage=9999&novel_id="+novelid;
+
             try {
                 newdatas = record.getData(api);
                 if (!newdatas.isEmpty()) {
@@ -333,9 +332,11 @@ public class PlayBackService extends Service {
                 }
                 record.setMark(PlayBackService.this, novelid);
             } catch (IOException e) {
-                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                if (e!=null && e.getMessage()!= null)
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
             } catch (JSONException e) {
-                Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                if (e!= null && e.getMessage()!= null)
+                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
             }
 
         }
@@ -494,8 +495,9 @@ public class PlayBackService extends Service {
                     break;
                 case MSG_LOAD_RECORD_LIST:
                     Record record = new Record();
+                    int force = msg.arg2;
                     long time = record.getMark(PlayBackService.this, msg.arg1);
-                    if (Myfunc.diffHour(time)>=6 && mDoingWhat.getLoadingRec() == false){
+                    if ((force == 1 || Myfunc.diffHour(time)>=6) && mDoingWhat.getLoadingRec() == false){
                         new GetRecordListTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, msg.arg1);
                         Toast.makeText(PlayBackService.this, R.string.load_record_list, Toast.LENGTH_LONG).show();
                     } else if (mDoingWhat.getLoadingRec() == false){

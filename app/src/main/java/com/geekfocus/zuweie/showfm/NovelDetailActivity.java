@@ -7,10 +7,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -26,19 +22,9 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.umeng.analytics.MobclickAgent;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 
@@ -50,6 +36,8 @@ public class NovelDetailActivity extends Activity {
     private Messenger mPlayback = null;
     private Messenger mItself = null;
 
+    private NetBitMap mNovelCover;
+    private NetBitMap mNjAvatar;
     private CircleImageView mNovel_im;
     private CircleImageView mNj_im;
     private ImageButton mPl_bt;
@@ -97,30 +85,30 @@ public class NovelDetailActivity extends Activity {
         this.getActionBar().setIcon(R.drawable.activity_back);
         this.getActionBar().setTitle(this.getIntent().getStringExtra("nvltitle"));
         // init the Ui
-
+        mNovelCover = new NetBitMap(NovelDetailActivity.this, getIntent().getStringExtra("nvlposter"), R.drawable.playlist_df_bg);
         mNovel_im = (CircleImageView) this.findViewById(R.id.novel_im);
         mNovel_im.setBorderWidth(8);
         mNovel_im.setBorderColor(getResources().getColor(R.color.novel_detail_cim_border1));
-        int novelid = this.getIntent().getIntExtra("nvl", -1);
-        File fpic = new File(getFilesDir().getAbsolutePath()+"/"+novelid+".jpg");
-        if (fpic.exists()){
-            mNovel_im.setImageURI(Uri.parse(fpic.toURI().toString()));
-        }else{
-            mNovel_im.setImageResource(R.drawable.playlist_df_bg);
-        }
+        mNovel_im.setImageBitmap(mNovelCover.getBitmap(new NetBitMap.LoadBitmapCallback() {
+            @Override
+            public void done(Bitmap bm, Object error) {
+                if (bm != null)
+                    mNovel_im.setImageBitmap(bm);
+            }
+        }));
 
         mNj_im = (CircleImageView) this.findViewById(R.id.nj_avatar_im);
         mNj_im.setBorderWidth(6);
         mNj_im.setBorderColor(getResources().getColor(R.color.novel_detail_cim_border2));
 
-        String njid = this.getIntent().getStringExtra("njid");
-        fpic = new File(getFilesDir().getAbsolutePath()+"/avatar_"+njid+".jpg");
-        if (fpic.exists()){
-            mNj_im.setImageURI(Uri.parse(fpic.toURI().toString()));
-        }else{
-            mNj_im.setImageResource(R.drawable.no_avatar);
-            new LoadAvatarTask().execute(this.getIntent().getStringExtra("njavatar"), this.getIntent().getStringExtra("njid"));
-        }
+        mNjAvatar = new NetBitMap(NovelDetailActivity.this, getIntent().getStringExtra("njavatar"), R.drawable.no_avatar);
+        mNj_im.setImageBitmap(mNjAvatar.getBitmap(new NetBitMap.LoadBitmapCallback() {
+            @Override
+            public void done(Bitmap bm, Object error) {
+                if (bm != null)
+                    mNj_im.setImageBitmap(bm);
+            }
+        }));
 
         //mPl_bt = (ImageButton) this.findViewById(R.id.pl_bt);
         mNovel_body_tx = (TextView)this.findViewById(R.id.nvl_body_tx);
@@ -140,6 +128,7 @@ public class NovelDetailActivity extends Activity {
                 it.putExtra("nvl", getIntent().getIntExtra("nvl", -1));
                 it.putExtra("nvlf", getIntent().getStringExtra("nvlf"));
                 it.putExtra("nvltitle", getIntent().getStringExtra("nvltitle"));
+                it.putExtra("nvlposter", getIntent().getStringExtra("nvlposter"));
                 it.putExtra("pm", getIntent().getIntExtra("pm", MyConstant.PM_NOVEL));
                 startActivity(it);
                 NovelDetailActivity.this.finish();
@@ -266,53 +255,6 @@ public class NovelDetailActivity extends Activity {
         }
     }
 
-    class LoadAvatarTask extends AsyncTask<String, Void, Integer> {
-
-        @Override
-        protected Integer doInBackground(String[] params) {
-
-            try {
-                URL url = new URL(params[0]);
-                njid = params[1];
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setConnectTimeout(5 * 1000);
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("Accept", "image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*");
-                connection.setRequestProperty("Accept-Language", "zh-CN");
-                connection.setRequestProperty("Charset", "UTF-8");
-                connection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)");
-                connection.setRequestProperty("Connection", "Keep-Alive");
-                Bitmap bitmap = BitmapFactory.decodeStream(connection.getInputStream());
-                if (bitmap != null){
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-                    FileOutputStream fos = openFileOutput("avatar_"+njid+".jpg", Context.MODE_PRIVATE);
-                    fos.write(bos.toByteArray());
-                    fos.close();
-                    return 0;
-                }
-            } catch (MalformedURLException e) {
-                Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-            } catch (ProtocolException e) {
-                Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-            } catch (IOException e) {
-                Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-            }
-
-            return -1;
-        }
-
-        @Override
-        protected void onPostExecute(Integer result) {
-            if (result == 0){
-                String avatar = getFilesDir().getAbsolutePath()+"/avatar_"+njid+".jpg";
-                Bitmap bmp = BitmapFactory.decodeFile(avatar);
-                mNj_im.setImageBitmap(bmp);
-            }
-        }
-        //CircleImageView cimg;
-        String njid;
-    }
 
     public static class AdFragment extends Fragment {
         private AdView mAdView;

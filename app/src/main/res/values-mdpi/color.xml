@@ -4,4 +4,6 @@
     <color name="esm_item_black">#000000</color>
     <color name="novel_detail_cim_border1">#96b1b718</color>
     <color name="novel_detail_cim_border2">#96c4c84a</color>
+    <color name="novel_item_new_updated">#ffff1721</color>
+    <color name="novel_item__normal">#FF4200B9</color>
 </resources>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="180dp"
+    android:paddingTop="20dp">
+
+    <de.hdodenhof.circleimageview.CircleImageView
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:id="@+id/avatar_im"
+        android:src="@drawable/no_avatar"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:ems="10"
+        android:id="@+id/content_box_tx"
+        android:gravity="top"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="5dp"
+        android:layout_alignParentTop="true"
+        android:background="@drawable/comment_box_bg"
+        android:hint="说两句..."
+        android:padding="10dp"
+        android:layout_toRightOf="@+id/avatar_im"
+        android:layout_toEndOf="@+id/avatar_im"
+        android:inputType="textMultiLine"
+        android:scrollbars="vertical" />
+
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="提交评论"
+        android:id="@+id/commit_bt"
+        android:layout_marginRight="20dp"
+        android:layout_marginTop="5dp"
+        android:textSize="12dp"
+        android:layout_below="@+id/content_box_tx"
+        android:layout_alignRight="@+id/content_box_tx"
+        android:layout_alignEnd="@+id/content_box_tx" />
+
+</RelativeLayout>

@@ -1,19 +1,19 @@
 package com.geekfocus.zuweie.showfm;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.app.DialogFragment;
 import android.app.Fragment;
 import android.content.ComponentName;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.drawable.AnimationDrawable;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -37,33 +37,34 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.dodowaterfall.widget.ScaleImageView;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
 import com.handmark.pulltorefresh.library.PullToRefreshListView;
-import com.huewu.pla.lib.internal.PLA_AbsListView;
-import com.paveldudka.util.FastBlur;
+import com.sina.weibo.sdk.api.ImageObject;
+import com.sina.weibo.sdk.api.TextObject;
+import com.sina.weibo.sdk.api.WeiboMultiMessage;
+import com.sina.weibo.sdk.api.share.BaseResponse;
+import com.sina.weibo.sdk.api.share.IWeiboHandler;
+import com.sina.weibo.sdk.api.share.IWeiboShareAPI;
+import com.sina.weibo.sdk.api.share.SendMultiMessageToWeiboRequest;
+import com.sina.weibo.sdk.api.share.WeiboShareSDK;
+import com.sina.weibo.sdk.auth.AuthInfo;
+import com.sina.weibo.sdk.auth.Oauth2AccessToken;
+import com.sina.weibo.sdk.auth.WeiboAuthListener;
+import com.sina.weibo.sdk.exception.WeiboException;
+import com.tencent.mm.sdk.modelmsg.SendMessageToWX;
+import com.tencent.mm.sdk.modelmsg.WXMediaMessage;
+import com.tencent.mm.sdk.modelmsg.WXMusicObject;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.WXAPIFactory;
 import com.umeng.analytics.MobclickAgent;
 
-import org.w3c.dom.Text;
-
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.ProtocolException;
-import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
-import de.hdodenhof.circleimageview.CircleImageView;
 
-
-public class PlayingListActivity extends Activity {
+public class PlayingListActivity extends Activity implements IWeiboHandler.Response{
 
     /* content data */
     public static ClientID mClientId  = new ClientID();
@@ -80,6 +81,10 @@ public class PlayingListActivity extends Activity {
     private Integer mExtendItemPos = -1;
     private Integer mscrolltoPos = -1;
     private MenuItem mPlaybackItem;
+
+    // share data //
+    IWeiboShareAPI mWeiboShareApi = null;
+    IWXAPI         mWxApi         = null;
     //private HeadHolder mHeaderHolder;
     /* PlayBack data */
     private Messenger mPlayback;
@@ -103,6 +108,8 @@ public class PlayingListActivity extends Activity {
                 if (isNovelMode()){
                     msg = Message.obtain(null, PlayBackService.MSG_LOAD_RECORD_LIST);
                     msg.arg1 = mNovelId;
+                    // 让 service 自己决定是否 进行 refresh
+                    msg.arg2 = 0;
                     mPlayback.send(msg);
                 }
 
@@ -155,6 +162,19 @@ public class PlayingListActivity extends Activity {
             this.getActionBar().setTitle(this.getIntent().getStringExtra("nvltitle"));
         }
 
+        /* init sina share data */
+        mWeiboShareApi = WeiboShareSDK.createWeiboAPI(this, Myfunc.getValidText(MyConstant.WEIBO_APP_KEY));
+        mWeiboShareApi.registerApp();
+        if (savedInstanceState != null){
+            mWeiboShareApi.handleWeiboResponse(getIntent(), this);
+        }
+        /* end init sina share data */
+
+        /*init weixin api */
+        mWxApi = WXAPIFactory.createWXAPI(this, MyConstant.WX_APP_ID);
+        Log.d("wx_regist", String.valueOf(mWxApi.registerApp(MyConstant.WX_APP_ID)));
+        /*end init weixin api */
+
         /* init the UI */
         this.getActionBar().setHomeButtonEnabled(true);
         this.getActionBar().setIcon(R.drawable.activity_back);
@@ -167,6 +187,8 @@ public class PlayingListActivity extends Activity {
                 if (mPlayback != null&&isNovelMode()){
                     Message msg = Message.obtain(null, PlayBackService.MSG_LOAD_RECORD_LIST);
                     msg.arg1 = mNovelId;
+                    // 强制 service 去 refresh
+                    msg.arg2 = 1;
                     try {
                         mPlayback.send(msg);
                     } catch (RemoteException e) {
@@ -233,6 +255,13 @@ public class PlayingListActivity extends Activity {
             public void onScroll(AbsListView view, int firstVisibleItem, int visibleItemCount, int totalItemCount) {}
         });
     }
+
+    @Override
+    protected  void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        mWeiboShareApi.handleWeiboResponse(intent, this);
+    }
+
     /* init playing list view */
     @Override
     protected void onStart(){
@@ -257,6 +286,12 @@ public class PlayingListActivity extends Activity {
     @Override
     protected void onStop(){
         super.onStop();
+    }
+
+    @Override
+    protected void onDestroy () {
+        mWxApi.unregisterApp();
+        super.onDestroy();
     }
 
     @Override
@@ -307,21 +342,17 @@ public class PlayingListActivity extends Activity {
                 }
             }
 
+        }else if (id == R.id.action_comment){
+            Intent it = new Intent(PlayingListActivity.this, NovelCommentActivity.class);
+            it.putExtra("nvl", getIntent().getIntExtra("nvl", -1));
+            startActivity(it);
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private Bitmap blur(Bitmap bp, ImageView view){
-        float radius = 5.0f;
-        Bitmap overlay = Bitmap.createBitmap(400, 400, Bitmap.Config.ARGB_8888);
-        // canvas 我可以理解为一个画笔。
-        Canvas canvas = new Canvas(overlay);
-        // 此处的 translate 就是移动 canvas的 x y值. 这里填入负值，就是将其移动到左上角。
-        canvas.translate(-view.getLeft(), -view.getTop());
-        canvas.drawBitmap(bp, 0, 0, null);
-        overlay = FastBlur.doBlur(overlay, (int)radius, true);
-        view.setImageBitmap(overlay);
-        return overlay;
+    @Override
+    public void onResponse(BaseResponse baseResponse) {
+        // TODO : handle the response result
     }
 
     private void bs(){
@@ -368,7 +399,6 @@ public class PlayingListActivity extends Activity {
         return -1;
     }
 
-
     private boolean isVisiblePosition(int position){
 
         int first = mPlayinglistView.getFirstVisiblePosition();
@@ -385,6 +415,204 @@ public class PlayingListActivity extends Activity {
         int second = (ms / 1000) % 60;
         int min    = (ms / 1000) / 60;
         return ""+(min>=10?min:"0"+min)+":"+(second>=10?second:"0"+second);
+    }
+
+    public static class ShareDialogFragment extends DialogFragment {
+
+        @Override
+        public Dialog onCreateDialog(Bundle savedInstanceState) {
+
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            LayoutInflater inflater = getActivity().getLayoutInflater();
+            View view = inflater.inflate(R.layout.share_dlg, null);
+
+            // weibo share
+            ImageButton weibo_bt = (ImageButton) view.findViewById(R.id.weibo_share);
+            weibo_bt.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Oauth2AccessToken accessToken = AccessTokenkeeper.readAccessToken(activity.getApplicationContext());
+
+                    if (accessToken != null && accessToken.isSessionValid()){
+
+                        AlertDialog dialog = (AlertDialog)v.getTag();
+                        WeiboMultiMessage message = new WeiboMultiMessage();
+
+                        String url = "http://yjh.geekfocus.cc/index.php/Showfm/Public/record?rid="+rec_id;
+                        String app_url = "http://www.showfm.net/app/app_down.asp";
+                        String format = getResources().getString(R.string.share_format);
+                        String sharetext = String.format(format, nvl_name+" - "+rec_name, url, app_url);
+                        //Log.d("weiboapi", String.valueOf(weiboShareAPI.getWeiboAppSupportAPI()));
+                        if (weiboShareAPI.getWeiboAppSupportAPI() >= 10351){
+                            // multi message
+                            // create the text obj
+                            TextObject textObject = new TextObject();
+                            textObject.text = sharetext;
+                            message.textObject = textObject;
+
+                            // create the img
+                            try {
+                                String fbmp = activity.getCacheDir() + "/" + Myfunc.md5(nvl_pic) + ".jpg";
+                                Bitmap bitmap = BitmapFactory.decodeFile(fbmp);
+                                if (bitmap != null) {
+                                    ImageObject imageObject = new ImageObject();
+                                    imageObject.setThumbImage(bitmap);
+                                    imageObject.actionUrl = url;
+                                    message.imageObject = imageObject;
+                                }
+                            }catch (NoSuchAlgorithmException e){}
+
+                        }else{
+                            // single message
+                            TextObject textObject = new TextObject();
+                            textObject.text = sharetext;
+                            message.mediaObject = textObject;
+                        }
+
+
+                        SendMultiMessageToWeiboRequest request = new SendMultiMessageToWeiboRequest();
+                        request.transaction = String.valueOf(System.currentTimeMillis());
+                        request.multiMessage = message;
+
+                        AuthInfo authInfo = new AuthInfo(activity, Myfunc.getValidText(MyConstant.WEIBO_APP_KEY), MyConstant.WEIBO_REDIRECT_URL, MyConstant.WEIBO_SCOPE);
+
+                        weiboShareAPI.sendRequest(activity, request, authInfo, accessToken.getToken(), new WeiboAuthListener(){
+                            @Override
+                            public void onComplete(Bundle bundle) {
+                                Oauth2AccessToken newToken = Oauth2AccessToken.parseAccessToken(bundle);
+                                AccessTokenkeeper.writeAccessToken(activity.getApplicationContext(), newToken);
+                            }
+
+                            @Override
+                            public void onWeiboException(WeiboException e) {
+
+                            }
+
+                            @Override
+                            public void onCancel() {
+
+                            }
+                        });
+                        dialog.dismiss();
+                    }else{
+                        // TODO : showfm had no login sina weibo
+                        Toast.makeText(activity, R.string.login_with_sina, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+            // wx share
+            ImageButton wx_bt_tl = (ImageButton) view.findViewById(R.id.wx_share_timeline);
+            wx_bt_tl.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                    AlertDialog dialog = (AlertDialog)v.getTag();
+                    //TODO : share the rec to weixin
+                    //Log.d("external_storage", state);
+                    WXMusicObject musicObject = new WXMusicObject();
+                    musicObject.musicUrl = "yjh.geekfocus.cc/index.php/Showfm/Public/record?rid="+rec_id;
+                    long etime = 60 * 60 * 24 * 3; // 3天的有效期
+                    try {
+                        musicObject.musicDataUrl = Myfunc.getValidUrl(nvl_folder+"/", rec_url, (int)etime);
+                    } catch (NoSuchAlgorithmException e) {}
+
+                    WXMediaMessage message = new WXMediaMessage();
+                    message.mediaObject = musicObject;
+                    message.description = nvl_name + " - "+rec_name;
+
+
+                    Bitmap bmp = BitmapFactory.decodeResource(activity.getResources(), R.drawable.showfm_64);
+                    if (bmp != null)
+                        message.thumbData = Myfunc.bmpToByteArray(bmp);
+
+                    SendMessageToWX.Req req = new SendMessageToWX.Req();
+                    req.transaction = "music"+String.valueOf(System.currentTimeMillis());
+                    req.scene = SendMessageToWX.Req.WXSceneTimeline;
+                    req.message = message;
+                    Log.d("wx_send_request", String.valueOf(wxApi.sendReq(req)));
+                    dialog.dismiss();
+                }
+            });
+
+            ImageButton wx_bt = (ImageButton) view.findViewById(R.id.wx_share);
+            wx_bt.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    AlertDialog dialog = (AlertDialog)v.getTag();
+                    //TODO : share the rec to weixin
+                    //Log.d("external_storage", state);
+                    WXMusicObject musicObject = new WXMusicObject();
+                    musicObject.musicUrl = "yjh.geekfocus.cc/index.php/Showfm/Public/record?rid="+rec_id;
+                    long etime = 60 * 60 * 24 * 3; // 3天的有效期
+                    try {
+                        musicObject.musicDataUrl = Myfunc.getValidUrl(nvl_folder+"/", rec_url, (int)etime);
+                    } catch (NoSuchAlgorithmException e) {}
+
+                    WXMediaMessage message = new WXMediaMessage();
+                    message.mediaObject = musicObject;
+                    message.description = nvl_name + " - "+rec_name;
+
+
+                    Bitmap bmp = BitmapFactory.decodeResource(activity.getResources(), R.drawable.showfm_64);
+                    if (bmp != null)
+                        message.thumbData = Myfunc.bmpToByteArray(bmp);
+
+                    SendMessageToWX.Req req = new SendMessageToWX.Req();
+                    req.transaction = "music"+String.valueOf(System.currentTimeMillis());
+                    req.scene = SendMessageToWX.Req.WXSceneSession;
+                    req.message = message;
+                    Log.d("wx_send_request", String.valueOf(wxApi.sendReq(req)));
+                    dialog.dismiss();
+                }
+            });
+
+            // facebook share
+            /* comment the facebook code, can not be use in china,Fuck!!
+            ShareButton fb_bt = (ShareButton) view.findViewById(R.id.fb_share);
+            ShareLinkContent shareLinkContent = new ShareLinkContent.Builder()
+                                               .setContentDescription(rec_name)
+                                               .setContentTitle(nvl_name)
+                                               .setImageUrl(Uri.parse(nvl_pic))
+                                               .setContentUrl(Uri.parse("http://yjh.geekfocus.cc/index.php/Showfm/Public/record?rid="+rec_id))
+                                               .build();
+            fb_bt.setShareContent(shareLinkContent);
+            fb_bt.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    AlertDialog dialog = (AlertDialog)v.getTag();
+                    dialog.dismiss();
+                }
+            });
+            //facebook share
+            */
+            builder.setView(view)
+            .setNegativeButton(R.string.negative, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            })
+            .setTitle(R.string.share_dlg_title);
+            AlertDialog dialog = builder.create();
+            weibo_bt.setTag(dialog);
+            wx_bt.setTag(dialog);
+            wx_bt_tl.setTag(dialog);
+            /* comment the facebook code, can not be use in china,Fuck!!
+            fb_bt.setTag(dialog);
+            */
+            return dialog;
+        }
+
+        public String rec_name;
+        public int rec_id;
+        public String rec_url;
+        public String nvl_name;
+        public String nvl_pic;
+        public String nvl_folder;
+        public Activity activity;
+        IWeiboShareAPI weiboShareAPI;
+        IWXAPI         wxApi;
     }
 
     public static class AdFragment extends Fragment {
@@ -443,6 +671,7 @@ public class PlayingListActivity extends Activity {
             if (mAdView != null) {
                 mAdView.destroy();
             }
+
             super.onDestroy();
         }
 
@@ -480,7 +709,6 @@ public class PlayingListActivity extends Activity {
                 LayoutInflater inflater = PlayingListActivity.this.getLayoutInflater();
                 convertView = inflater.inflate(R.layout.playlist_item, null);
                 holder = new Holder();
-
                 // easy mode
                 holder.esm = convertView.findViewById(R.id.esm_item);
                 holder.esm_title = (TextView)convertView.findViewById(R.id.esm_title);
@@ -492,7 +720,27 @@ public class PlayingListActivity extends Activity {
                 holder.plm_rec_nj = (TextView)convertView.findViewById(R.id.plm_rec_nj);
                 //holder.plm_rec_updated = (TextView)convertView.findViewById(R.id.plm_rec_updated);
                 holder.plm_rec_timer = (TextView)convertView.findViewById(R.id.plm_rec_timer);
-
+                holder.plm_share_tx  = (TextView)convertView.findViewById(R.id.plm_share_tx);
+                holder.plm_share_tx.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // todo new show a share dialog here
+                        ContentValues data = (ContentValues) v.getTag();
+                        ShareDialogFragment dialogFragment = new ShareDialogFragment();
+                        dialogFragment.activity = PlayingListActivity.this;
+                        dialogFragment.rec_id = data.getAsInteger("rec_id");
+                        dialogFragment.rec_name = data.getAsString("rec_name");
+                        dialogFragment.rec_url  = data.getAsString("rec_url");
+                        dialogFragment.nvl_name = data.getAsString("nvl_name");
+                        dialogFragment.nvl_pic = data.getAsString("nvl_pic");
+                        dialogFragment.nvl_folder = data.getAsString("nvl_folder");
+                        dialogFragment.weiboShareAPI = mWeiboShareApi;
+                        dialogFragment.wxApi         = mWxApi;
+                        dialogFragment.show(getFragmentManager(), "shareDlg");
+                    }
+                });
+                holder.plm_share_tx.setTag(new ContentValues());
+                holder.plm_share_tx.getPaint().setUnderlineText(true);
                 holder.plm_seekbar = (SeekBar)convertView.findViewById(R.id.plm_player_skb);
                 holder.plm_seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
@@ -533,7 +781,7 @@ public class PlayingListActivity extends Activity {
                                 String url = rdata.getAsString(Record.URL);
                                 String[] param = new String[2];
                                 try {
-                                    url = Myfunc.getValidUrl(mNovelFolder+"/", url, 900);
+                                    url = Myfunc.getValidUrl(mNovelFolder+"/", url, 1800);
                                     Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
                                     msg.obj = url+" "+rdata.getAsInteger(Record.NOVELID);
                                     msg.arg1 = rdata.getAsInteger(Record.ID);
@@ -566,9 +814,11 @@ public class PlayingListActivity extends Activity {
                 convertView.setTag(holder);
             }else{
                 holder = (Holder)convertView.getTag();
+
             }
             // ui update
             if (isNovelMode()){
+
                 if (data.getAsInteger("item_mode") == 1){
 
                     holder.esm.setVisibility(View.GONE);
@@ -618,7 +868,15 @@ public class PlayingListActivity extends Activity {
                     holder.plm_seekbar.setProgress(data.getAsInteger("player_curpos"));
                     holder.plm_seekbar.setSecondaryProgress(data.getAsInteger("player_buffer"));
 
-
+                    // share data update
+                    ContentValues values = (ContentValues) holder.plm_share_tx.getTag();
+                    values.put("rec_id", data.getAsInteger(Record.ID));
+                    values.put("rec_name", data.getAsString(Record.NAME));
+                    values.put("rec_url", data.getAsString(Record.URL));
+                    values.put("nvl_name", getIntent().getStringExtra("nvltitle"));
+                    values.put("nvl_pic", getIntent().getStringExtra("nvlposter"));
+                    values.put("nvl_folder", getIntent().getStringExtra("nvlf"));
+                    // end share data
                 }else{
                     // easy mode
 
@@ -666,6 +924,7 @@ public class PlayingListActivity extends Activity {
             ImageButton plm_playerbt;
             SeekBar plm_seekbar;
             TextView plm_rec_nj;
+            TextView plm_share_tx;
             //TextView plm_rec_updated;
             TextView plm_rec_timer;
             AnimationDrawable recLoading;
@@ -919,67 +1178,4 @@ public class PlayingListActivity extends Activity {
             }
         }
     }
-
-    class LoadAvatarTask extends AsyncTask<String, Void, Integer> {
-
-        public LoadAvatarTask(CircleImageView c, String njid){
-            this.cimg = c;
-            this.njid = njid;
-        }
-
-        @Override
-        protected Integer doInBackground(String[] params) {
-
-            try {
-                URL url = new URL(params[0]);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setConnectTimeout(5 * 1000);
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("Accept", "image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*");
-                connection.setRequestProperty("Accept-Language", "zh-CN");
-                connection.setRequestProperty("Charset", "UTF-8");
-                connection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)");
-                connection.setRequestProperty("Connection", "Keep-Alive");
-                Bitmap bitmap = BitmapFactory.decodeStream(connection.getInputStream());
-                if (bitmap != null){
-                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-                    FileOutputStream fos = openFileOutput("avatar_"+njid+".jpg", Context.MODE_PRIVATE);
-                    fos.write(bos.toByteArray());
-                    fos.close();
-                    return 0;
-                }
-            } catch (MalformedURLException e) {
-                Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-            } catch (ProtocolException e) {
-                Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-            } catch (IOException e) {
-                Log.e(MyConstant.TAG_NOVEL, e.getMessage());
-            }
-
-            return -1;
-        }
-
-        @Override
-        protected void onPostExecute(Integer result) {
-            if (result == 0){
-                String avatar = PlayingListActivity.this.getFilesDir().getAbsolutePath()+"/avatar_"+njid+".jpg";
-                Bitmap bmp = BitmapFactory.decodeFile(avatar);
-                cimg.setImageBitmap(bmp);
-            }
-        }
-        CircleImageView cimg;
-        String njid;
-    }
-
-    /*
-    class HeadHolder {
-        ScaleImageView nvl_bg_im;
-        //ScaleImageView nvl_wbg_im;
-        CircleImageView nj_avatar_img;
-        //TextView nvl_author_tx;
-        //TextView nj_name_tx;
-        ImageButton nvl_comments_bt;
-    }
-    */
 }

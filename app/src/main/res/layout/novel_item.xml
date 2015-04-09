@@ -28,17 +28,7 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="@dimen/novel_item_text_mt" />
 
-    <!--
-    <ImageView
-        android:layout_width="@dimen/novel_item_nvl_new_img_width"
-        android:layout_height="@dimen/novel_item_nvl_new_img_height"
-        android:id="@+id/nvl_new_img"
-        android:layout_alignParentTop="true"
-        android:layout_alignLeft="@+id/nvl_img_view"
-        android:layout_alignStart="@+id/nvl_img_view"
-        android:background="@drawable/playing"
-        android:layout_marginTop="@dimen/novel_item_nvl_new_img_mt" />
-    -->
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

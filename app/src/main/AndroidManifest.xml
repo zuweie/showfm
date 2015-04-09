@@ -7,8 +7,10 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".ShowfmApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
@@ -26,6 +28,7 @@
             </intent-filter>
         </activity>
         <activity
+            android:launchMode="singleTask"
             android:name="com.geekfocus.zuweie.showfm.MainActivity"
             android:label="@string/showfm"
             android:theme="@style/AppTheme" >
@@ -34,17 +37,43 @@
             android:name="com.geekfocus.zuweie.showfm.PlayingListActivity"
             android:theme="@style/AppTheme" >
         </activity>
-
         <activity
             android:name="com.geekfocus.zuweie.showfm.NovelDetailActivity"
+            android:theme="@style/AppTheme" >
+        </activity>
+        <activity
+            android:name="com.geekfocus.zuweie.showfm.LoginActivity2"
+            android:label="@string/title_activity_login_activity2"
+            android:theme="@style/AppTheme" >
+        </activity>
+        <activity
+            android:name="com.sina.weibo.sdk.component.WeiboSdkBrowser"
+            android:configChanges="keyboardHidden|orientation"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme">
         </activity>
+        <activity
+            android:name="com.geekfocus.zuweie.showfm.SettingActivity"
+            android:label="@string/title_activity_setting"
+            android:theme="@style/AppTheme">
+        </activity>
+        <activity
+            android:name="com.geekfocus.zuweie.showfm.NovelCommentActivity"
+            android:label="@string/title_activity_novel_comment"
+            android:theme="@style/AppTheme">
+        </activity>
+
+        <activity android:name="com.facebook.FacebookActivity"
+            android:configChanges=
+                "keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:label="@string/app_name" />
 
         <activity
             android:name="com.google.android.gms.ads.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:theme="@android:style/Theme.Translucent" />
-
 
         <service
             android:name="com.geekfocus.zuweie.showfm.PlayBackService"
@@ -52,10 +81,22 @@
             android:exported="true" >
         </service>
 
+        <service android:name="com.avos.avoscloud.PushService"></service>
+        <activity android:name="com.avos.avoscloud.feedback.ThreadActivity"></activity>
+        <receiver android:name="com.avos.avoscloud.AVBroadcastReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.USER_PRESENT" />
+            </intent-filter>
+        </receiver>
+
         <meta-data
             android:name="UMENG_APPKEY"
             android:value="54d038cafd98c5d26b000ed1" />
 
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
 
     </application>
 

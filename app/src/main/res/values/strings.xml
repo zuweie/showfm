@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <string name="facebook_app_id">373993706120423</string>
     <string name="app_name">粤语有声小说-Showfm</string>
     <string name="showfm">ShowFM</string>
     <string name="hello_world">Hello world!</string>
@@ -34,5 +34,41 @@
     <string name="title_activity_weibo_comments">评论</string>
     <string name="load_record_list">加载小说列表中...</string>
     <string name="title_activity_novel_detail">NovelDetailActivity</string>
-
+    <string name="title_activity_login">登录</string>
+    <string name="weibo_auth_success">微博认证成功</string>
+    <string name="weibo_auth_fail">微博认证失败</string>
+    <string name="weibo_auth_exception">认证异常</string>
+    <string name="weibo_auth_cancel">认证取消</string>
+    <string name="title_activity_login_activity2">登录</string>
+    <string name="load_user_info">加载用户数据...</string>
+    <string name="welcome_user">欢迎 </string>
+    <string name="login_fail">登录异常,请再试一次.</string>
+    <string name="title_activity_setting">设置</string>
+    <string name="title_activity_novel_comment">评论</string>
+    <string name="invalid_login">登录无效</string>
+    <string name="do_login">亲，您是否进行登录?</string>
+    <string name="negative">取消</string>
+    <string name="positive">确定</string>
+    <string name="comment_post_success">评论成功.</string>
+    <string name="skip">跳过 >></string>
+    <string name="no_login">未登录</string>
+    <string name="exit">退出</string>
+    <string name="feedback">用着不爽,吐嘈一下</string>
+    <string name="login">登录</string>
+    <string name="logout">登出</string>
+    <string name="version">版本</string>
+    <string name="checking_version">检测版本中...</string>
+    <string name="version_dlg_title">更新信息</string>
+    <string name="version_dlg_title_new">发现新版本</string>
+    <string name="version_dlg_content_update">有新的版本，是否前往更新？</string>
+    <string name="version_dlg_content_newest">当前版本已经是最新！</string>
+    <string name="current_version">当前版本:</string>
+    <string name="click_to_check">(点击更新)</string>
+    <string name="login_sta_get_user_info">获取用户数据中...</string>
+    <string name="share">分享一下</string>
+    <string name="share_format">我正在听 %1$s %2$s ( 分享自Showfm客户端 %3$s )</string>
+    <string name="login_with_sina">亲,请先使用您的新浪帐号登录.</string>
+    <string name="share_facebook_listening">ShowFm</string>
+    <string name="replay_comment_format">回复@%1$s : </string>
+    <string name="share_dlg_title">支持粤语文化,支持ShowFm</string>
 </resources>

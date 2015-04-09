@@ -110,6 +110,10 @@
     <dimen name="playing_list_plm_item_rec_nj_tsz">12dp</dimen>
     <dimen name="playing_list_plm_item_rec_nj_mt">3dp</dimen>
 
+    <dimen name="playing_list_plm_item_rec_share_tsz">15dp</dimen>
+    <dimen name="playing_list_plm_item_rec_share_mt">2dp</dimen>
+    <dimen name="playing_list_plm_item_rec_share_ml">5dp</dimen>
+
     <dimen name="playing_list_plm_item_rec_timer_tsz">10dp</dimen>
     <dimen name="playing_list_plm_item_rec_timer_mr">10dp</dimen>
     <dimen name="playing_list_plm_item_rec_timer_mt">5dp</dimen>

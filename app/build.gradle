@@ -8,8 +8,8 @@ android {
         applicationId "com.geekfocus.zuweie.showfm"
         minSdkVersion 15
         targetSdkVersion 21
-        versionCode 3
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.6"
     }
     buildTypes {
         release {
@@ -17,14 +17,37 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-}
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
 
+    packagingOptions {
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE.txt'
+    }
+}
+repositories {
+    mavenCentral()
+}
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile project(':library')
     compile 'com.google.android.gms:play-services:6.+'
     compile project(':waterfall')
     compile 'com.umeng.analytics:analytics:latest.integration'
-    compile project (":blurring")
-    compile project (":circleimageview")
+    compile project(':blurring')
+    compile project(':circleimageview')
+    //compile project(':api')
+
+    compile 'cn.leancloud.android:avoscloud-sdk:v2.6.+'
+    compile 'cn.leancloud.android:avoscloud-push:v2.7+@aar'
+    compile 'cn.leancloud.android:Java-WebSocket:1.2.0-leancloud'
+    compile 'cn.leancloud.android:avoscloud-feedback:v2.7+@aar'
+
+    compile 'com.android.support:appcompat-v7:21.0.3'
+    compile 'com.facebook.android:facebook-android-sdk:4.0.0'
+    compile project(':weibosdkcore')
+    compile project(':libammsdk')
 }

@@ -14,10 +14,9 @@
         <menu></menu>
     </item>
 
-    <item android:id="@+id/action_exit"
-          android:title="Exit"
-          android:icon="@drawable/exit"
+    <item android:id="@+id/action_me"
+          android:title="me"
+          android:icon="@drawable/me"
           android:showAsAction="always"/>
-
 
 </menu>

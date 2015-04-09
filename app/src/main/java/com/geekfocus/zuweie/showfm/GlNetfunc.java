@@ -1,9 +1,5 @@
 package com.geekfocus.zuweie.showfm;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -25,10 +21,15 @@ import org.apache.http.params.HttpProtocolParams;
 import org.apache.http.protocol.HTTP;
 import org.apache.http.util.EntityUtils;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Created by zuweie on 3/13/14.
  */
 public class GlNetfunc {
+
     private static GlNetfunc ourInstance = new GlNetfunc();
 
     public static GlNetfunc getInstance() {

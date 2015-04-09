@@ -106,6 +106,21 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/share"
+            android:id="@+id/plm_share_tx"
+            android:textStyle="bold"
+            android:textSize="@dimen/playing_list_plm_item_rec_share_tsz"
+            android:layout_marginLeft="@dimen/playing_list_plm_item_rec_share_ml"
+            android:layout_below="@+id/plm_player_skb"
+            android:layout_alignBaseline="@+id/plm_rec_nj"
+            android:layout_toRightOf="@+id/plm_rec_nj"
+            android:layout_toEndOf="@+id/plm_rec_nj"
+            android:textColor="#ffc7172e" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
             android:text="Small Text"
             android:id="@+id/plm_rec_timer"
             android:textSize="@dimen/playing_list_plm_item_rec_timer_tsz"

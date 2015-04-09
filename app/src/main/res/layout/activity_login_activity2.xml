@@ -1,0 +1,62 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.geekfocus.zuweie.showfm.LoginActivity2"
+    tools:ignore="MergeRootFrame">
+
+    <ImageButton
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="微搏登录"
+        android:id="@+id/weibo_login_bt"
+        android:src="@drawable/wb_logo"
+        android:layout_marginTop="20dp"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_centerHorizontal="true"/>
+
+    <!-- comment the facebook code, can not be use in china,Fuck!!
+    <com.facebook.login.widget.LoginButton
+        android:id="@+id/fb_login_bt"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/weibo_login_bt"/>
+    -->
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="@string/skip"
+        android:id="@+id/skip"
+        android:textSize="25dp"
+        android:textColor="#ff2900f0"
+        android:layout_marginBottom="65dp"
+        android:layout_marginRight="20dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text=""
+        android:id="@+id/login_status"
+        android:layout_centerInParent="true"/>
+
+
+    <fragment
+        android:id="@+id/login_adFragment"
+        android:name="com.geekfocus.zuweie.showfm.LoginActivity2$AdFragment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true">
+    </fragment>
+
+
+</RelativeLayout>

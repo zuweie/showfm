@@ -14,32 +14,32 @@ import android.widget.Toast;
 
 import com.umeng.analytics.MobclickAgent;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.io.IOException;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 
 public class StartupActivity extends Activity {
 
-    //private final static String NVL_API = "http://www.showfm.net/api/novel.asp";
-
     private TextView mStarupTips = null;
+    //private Messenger mItSelf = null;
+
+    boolean mUpdateSSOUserOk = false;
+
+    public static final int MSG_ON_UPDATE_LOGIN_USER = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         this.setTheme(R.style.StartUpActionBar);
         super.onCreate(savedInstanceState);
+        /*comment the facebook code, can not be use in china,Fuck!!
+        FacebookSdk.sdkInitialize(this.getApplicationContext());
+        */
         setContentView(R.layout.activity_startup);
         mStarupTips = (TextView)findViewById(R.id.start_up_text);
-        Novel novel = new Novel();
-        //String sdate = novel.getMark(StartupActivity.this);
-        new loadDataTask().execute();
-        super.onCreate(savedInstanceState);
+        new loadDataTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     @Override
@@ -60,7 +60,6 @@ public class StartupActivity extends Activity {
         if (id == R.id.action_settings) {
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -76,20 +75,37 @@ public class StartupActivity extends Activity {
         super.onPause();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+        if (requestCode == MyConstant.LOGIN_REQ_CODE){
+            if (resultCode == MyConstant.LOGIN_OK){
+                Toast.makeText(StartupActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
+            }else if(resultCode == MyConstant.LOGIN_ERROR){
+                Toast.makeText(StartupActivity.this, "登录异常", Toast.LENGTH_SHORT).show();
+            }else if (resultCode == MyConstant.LOGIN_CANCEL){
+                Toast.makeText(StartupActivity.this, "登录取消", Toast.LENGTH_SHORT).show();
+            }
+            Intent it = new Intent(StartupActivity.this, MainActivity.class);
+            startActivity(it);
+            finish();
+        }
+    }
 
     private class loadDataTask extends AsyncTask<String, CharSequence, Integer> {
         @Override
         protected Integer doInBackground(String[] params) {
+
             try {
                 Novel novel = new Novel();
                 long time = novel.getMark(StartupActivity.this);
                 long diffday = Myfunc.diffDay(time);
+
                 if (diffday >=1){
                     Thread.sleep(1000);
                     publishProgress(getResources().getText(R.string.startup_progress_1));
                     String date = Myfunc.ltime2Sdate(time);
-                    String api = "http://www.showfm.net/api/novel.asp?after="+ Uri.encode(date)+"&state0=1&state1=2";
-                    Log.v(MyConstant.TAG_NOVEL, "update api: "+ api);
+                    String api = Myfunc.getNovelApi()+"?after="+ Uri.encode(date)+"&state0=1&state1=2";
+                    Log.v(MyConstant.TAG_NOVEL, "update api: " + api);
                     //publishProgress("api:"+api);
                     List<ContentValues> datas = novel.getData(api);
                     publishProgress(getResources().getText(R.string.startup_progress_2));
@@ -113,6 +129,7 @@ public class StartupActivity extends Activity {
                     publishProgress(getResources().getText(R.string.startup_progress_4));
                     Thread.sleep(5000);
                 }
+
                 return 0;
             } catch (IOException e) {
                 Log.e(MyConstant.TAG_NOVEL_API, e.getMessage());
@@ -121,7 +138,6 @@ public class StartupActivity extends Activity {
             } catch (InterruptedException e) {
                 Log.e(MyConstant.TAG_NOVEL, e.getMessage());
             }
-
             return -1;
         }
 
@@ -133,20 +149,29 @@ public class StartupActivity extends Activity {
         @Override
         protected void onPostExecute (Integer result){
 
-
-
             if (result == 0){
                 Toast.makeText(StartupActivity.this, R.string.load_data_ok, Toast.LENGTH_SHORT).show();
             }else{
                 Toast.makeText(StartupActivity.this, R.string.load_data_unusual, Toast.LENGTH_SHORT).show();
             }
 
+            mStarupTips.setText(R.string.load_user_info);
 
-            // TODO : jump to main Activity;
-            Intent intent = new Intent(StartupActivity.this, MainActivity.class);
-            StartupActivity.this.startActivity(intent);
-            StartupActivity.this.finish();
+            // 1 read last login info
+            MyLogin.getInstance().setContext(StartupActivity.this);
+            MyLogin.getInstance().readLoginStatus();
+            if (MyLogin.getInstance().getLoginStatus() != MyLogin.STA_LOGOUT
+               && MyLogin.getInstance().isSSOTokenvalid()){
+                MyLogin.getInstance().fetchAVOSUser();
+                MyLogin.getInstance().fetchSSoUser();
+                Intent it = new Intent(StartupActivity.this, MainActivity.class);
+                startActivity(it);
+                finish();
+            }else {
+                Intent intent = new Intent(StartupActivity.this, LoginActivity2.class);
+                startActivityForResult(intent, MyConstant.LOGIN_REQ_CODE);
+            }
         }
-
     }
+
 }
