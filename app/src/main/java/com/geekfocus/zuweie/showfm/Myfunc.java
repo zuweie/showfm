@@ -1,5 +1,6 @@
 package com.geekfocus.zuweie.showfm;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
@@ -10,6 +11,9 @@ import android.text.format.DateFormat;
 import java.io.ByteArrayOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Random;
 
 /**
  * Created by zuweie on 12/17/14.
@@ -31,6 +35,18 @@ public class Myfunc {
             signbuffer.append(Integer.toHexString(i));
         }
         return signbuffer.toString();
+    }
+
+    public static ContentValues getDownloadConnectionHeader(int recid, int novelid){
+        ContentValues header = new ContentValues();
+        header.put("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+        header.put("Accept-Language", "en-US,en;q=0.5");
+        header.put("Referer", "http://www.showfm.net/novel/download.asp?id="+recid+"&xilie="+novelid);
+        header.put("Charset", "UTF-8");
+        header.put("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:33.0) Gecko/20100101 Firefox/33.0");
+        header.put("Connection", "keep-Alive");
+        header.put("Cache-Control", "max-age=0");
+        return header;
     }
 
     public static String getValidUrl (String foler, String itemurl, int expire) throws NoSuchAlgorithmException {
@@ -97,6 +113,41 @@ public class Myfunc {
         return date;
     }
 
+    public static boolean showupYYT(){
+
+        if(showup == 0)
+            return false;
+        else if (showup > total)
+            return true;
+
+        int chance = (int) (((float)showup / (float)total) * 100);
+
+        int rc = crandom.nextInt(100);
+
+        if (rc <= chance)
+            return  true;
+        else
+            return false;
+    }
+
+    public static ContentValues getYytRandom() {
+        if (showupYYT() && yyts.size() > 0){
+            int pos = yytrandom.nextInt(yyts.size());
+            return yyts.get(pos);
+        }else
+            return null;
+    }
+
+    public static void setShowUpChance(int s, int t){
+        showup = s;
+        total  = t;
+    }
+
+    public static int showup = 0;
+    public static int total  = 100;
+    public static List<ContentValues> yyts = new LinkedList<ContentValues>();
+    public static Random crandom = new Random();
+    public static Random yytrandom = new Random();
     //public static native String getValidToken ();
     public static native String getResourceHost ();
     public static native String getNovelApi ();

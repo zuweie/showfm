@@ -11,7 +11,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
@@ -100,12 +99,14 @@ public class Record extends MyData{
 
 
     public void loadDownloader (Context c, List<ContentValues> datas) {
+
         MyOpenHelper dbh = new MyOpenHelper(c);
         SQLiteDatabase db = dbh.getWritableDatabase();
         Downloader downloader = new Downloader();
-        for(int i=0; i<datas.size(); ++i){
-            ContentValues data = datas.get(i);
 
+        for(int i=0; i<datas.size(); ++i){
+
+            ContentValues data = datas.get(i);
             int downloadid = data.getAsInteger(Record.DOWNLOADID);
 
             if (downloadid > 0){
@@ -149,7 +150,7 @@ public class Record extends MyData{
             ContentValues ndata = novel.loadDataById(c, rdata.getAsInteger(Record.NOVELID));
 
             String path = c.getExternalFilesDir(Environment.DIRECTORY_MUSIC).getAbsolutePath()+"/";
-            String filename = String.valueOf(System.currentTimeMillis()/1000)+".mp3";
+            String filename = "rec_"+rdata.getAsInteger(Record.ID)+".mp3";
             String url = ndata.getAsString(Novel.URL) + "/" +rdata.getAsString(Record.URL);
 
             long id = downloader.createData(c,filename, path, url);
@@ -168,9 +169,9 @@ public class Record extends MyData{
     public int deleteDownloader(Context c, ContentValues rdata){
         int downloadid = rdata.getAsInteger(Record.DOWNLOADID);
         if (downloadid > 0){
-            Downloader downloader = new Downloader();
-            ContentValues dd = downloader.loadData(c, downloadid);
-            int r = downloader.deleteData(c,dd, true);
+
+            ContentValues dd = Downloader.loadData(c, downloadid);
+            int r = Downloader.deleteData(c,dd, true);
             rdata.put(Record.DOWNLOADID, -1);
             ContentValues v = new ContentValues();
             v.put(Record.ID, rdata.getAsInteger(Record.ID));

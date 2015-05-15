@@ -343,7 +343,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
     public void onRefresh() {
         //Toast.makeText(MainActivity.this, R.string.novel_newest, Toast.LENGTH_LONG).show();
         if (isRefreshing == false)
-            new RefreshNovelTask().execute();
+            new RefreshNovelTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         else
             mXListView.stopRefresh();
     }
@@ -491,19 +491,20 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
 
     }
     // 用于下拉更新小说列表
-    private class RefreshNovelTask extends AsyncTask<Void, Void, Void> {
+    private class RefreshNovelTask extends AsyncTask<Void, Integer, List<ContentValues>> {
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected List<ContentValues> doInBackground(Void... params) {
             isRefreshing = true;
             Novel novel = new Novel();
             String date = Myfunc.ltime2Sdate(novel.getMark(MainActivity.this));
             String api = Myfunc.getNovelApi()+"?after="+ Uri.encode(date)+"state0=1&state1=2";
-
+            //String api = "http://www.showfm.net/api/novel.asp?after=2014%2F01%2F01%2008%3A00%3A00&state0=1&state1=2";
+            List<ContentValues> result = null;
             try {
                 List<ContentValues> datas = novel.getData(api);
                 if (datas != null && !datas.isEmpty()) {
-                    novel.saveData(MainActivity.this, datas);
+                    //novel.saveData(MainActivity.this, datas);
                     novel.setMark(MainActivity.this);
                     List<ContentValues> vs = new ArrayList<ContentValues>();
 
@@ -511,20 +512,30 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
                         ContentValues v = new ContentValues();
                         ContentValues data = datas.get(i);
                         v.put(Novel.ID, data.getAsInteger(Novel.ID));
-                        v.put(Novel.UPDATED, data.getAsInteger(Novel.UPDATED));
+                        v.put(Novel.UPDATED, data.getAsLong(Novel.UPDATED));
                         vs.add(v);
                     }
                     novel.updataNovelDate(MainActivity.this, vs);
+                    // reload data from database;
+                    result = novel.loadData(MainActivity.this, null, null, null, "updated desc");
                 }
             } catch (IOException e) {}
-            catch (JSONException e) {}
+            catch (JSONException e) {
+                e.printStackTrace();
+            }
             isRefreshing = false;
-            return null;
+            return result;
         }
 
         @Override
-        protected void onPostExecute(Void result){
+        protected void onPostExecute(List<ContentValues> result){
             mXListView.stopRefresh();
+            if (result != null){
+                mNovel_data.clear();
+                mNovel_data.addAll(result);
+                mPickup_data.clear();
+                mPickup_data.addAll(mNovel_data);
+            }
             mAdapter.notifyDataSetChanged();
         }
     }
@@ -595,7 +606,7 @@ public class MainActivity extends Activity implements XListView.IXListViewListen
             ContentValues data = (ContentValues)this.getItem(position);
             String name;
             if (Myfunc.diffDay(data.getAsLong(Novel.UPDATED)) < 1) {
-                name = data.getAsInteger(Novel.ID) + "." + data.getAsString(Novel.NAME)+"(new)";
+                name = data.getAsInteger(Novel.ID) + "." + data.getAsString(Novel.NAME)+"("+getResources().getString(R.string.new_novel)+")";
                 holder.textView.setTextColor(getResources().getColor(R.color.novel_item_new_updated));
             }else{
                 name = data.getAsInteger(Novel.ID) + "." + data.getAsString(Novel.NAME);

@@ -121,6 +121,21 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textAppearance="?android:attr/textAppearanceSmall"
+            android:id="@+id/plm_download_tx"
+            android:textStyle="bold"
+            android:text="@string/download"
+            android:textSize="10dp"
+            android:layout_marginLeft="5dp"
+            android:layout_below="@+id/plm_player_skb"
+            android:layout_alignBaseline="@+id/plm_rec_nj"
+            android:layout_toRightOf="@+id/plm_share_tx"
+            android:layout_toEndOf="@+id/plm_share_tx"
+            android:textColor="#FF1ECC17"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall"
             android:text="Small Text"
             android:id="@+id/plm_rec_timer"
             android:textSize="@dimen/playing_list_plm_item_rec_timer_tsz"

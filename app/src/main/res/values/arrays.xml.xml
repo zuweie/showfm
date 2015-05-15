@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string-array name="download_idle_option">
+        <item>开始下载</item>
+    </string-array>
+
+    <string-array name="download_started_option">
+        <item>暂停下载</item>
+   </string-array>
+    
+    <string-array name="download_paused_option">
+        <item>开始下载</item>
+        <item>删除文件</item>
+    </string-array>
+
+    <string-array name="download_done_option">
+        <item>删除文件</item>
+    </string-array>
+
+    <string-array name="download_err_option">
+        <item>继续下载</item>
+        <item>删除文件</item>
+    </string-array>
+</resources>

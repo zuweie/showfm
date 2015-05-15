@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <string name="facebook_app_id">373993706120423</string>
     <string name="app_name">粤语有声小说-Showfm</string>
-    <string name="showfm">ShowFM</string>
+    <string name="showfm"></string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
     <string name="hello_blank_fragment">Hello blank fragment</string>
@@ -65,10 +66,23 @@
     <string name="current_version">当前版本:</string>
     <string name="click_to_check">(点击更新)</string>
     <string name="login_sta_get_user_info">获取用户数据中...</string>
-    <string name="share">分享一下</string>
+    <string name="share">分享</string>
     <string name="share_format">我正在听 %1$s %2$s ( 分享自Showfm客户端 %3$s )</string>
     <string name="login_with_sina">亲,请先使用您的新浪帐号登录.</string>
     <string name="share_facebook_listening">ShowFm</string>
     <string name="replay_comment_format">回复@%1$s : </string>
     <string name="share_dlg_title">支持粤语文化,支持ShowFm</string>
+    <string name="new_novel">新野</string>
+    <string name="title_activity_flying_text">FlyingTextActivity</string>
+    <string name="download">离线收听</string>
+    <string name="download_started">%1$s%%</string>
+    <string name="download_paused">暂停(%1$s%%)</string>
+    <string name="download_err">错误!(%1$s)</string>
+    <string name="download_preparing">准备..</string>
+    <string name="download_done">完成</string>
+    <string name="no_sdcard">请插入SD卡,再继续下载.</string>
+    <string name="download_select_dlg_title">操作</string>
+    <string name="play_remote">在线播放</string>
+    <string name="play_local">本地播放</string>
+    <string name="downloading_tips">正在下载,请稍后.</string>
 </resources>

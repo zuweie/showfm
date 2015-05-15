@@ -20,7 +20,6 @@ import android.widget.Toast;
 import org.json.JSONException;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -37,12 +36,14 @@ public class PlayBackService extends Service {
     public final static int MSG_LOGIN = 1;
     public final static int MSG_LOGOUT = 2;
     public final static int MSG_PLAY = 3;
+    public final static int MSG_PLAY_LOCAL = 14;
     public final static int MSG_START = 4;
     public final static int MSG_PAUSE = 5;
     public final static int MSG_SEEKTO = 6;
     public final static int MSG_LOAD_RECORD_LIST = 7;
     public final static int MSG_START_DOWNLOAD_REC = 8;
     public final static int MSG_PAUSE_DOWNLOAD_REC = 9;
+    public final static int MSG_DELETE_DOWNLOAD_REC=13;
     public final static int MSG_CURRENT_STATUS =    10;
     public final static int MSG_START_PLAYER_PGROGRESS_UPDATER = 11;
     public final static int MSG_STOP_PLAYER_PROGRESS_UPDATER = 12;
@@ -59,7 +60,7 @@ public class PlayBackService extends Service {
     /* */
     private static Status mMp3Status;
     private DoingWhat mDoingWhat;
-    private List<ContentValues> mDownloadtask = null;
+    private SparseArray<ContentValues> mRunningDownloadtask = null;
     private Timer mPlayerProgressUpdater;
     //private boolean isUpdaterCancel = true;
 
@@ -123,7 +124,7 @@ public class PlayBackService extends Service {
 
         mDoingWhat = new DoingWhat();
 
-        mDownloadtask = new LinkedList<ContentValues>();
+        mRunningDownloadtask = new SparseArray<ContentValues>();
 
         mClients = new SparseArray<Messenger>();
 
@@ -152,11 +153,11 @@ public class PlayBackService extends Service {
         // check the download task if exists stop it
         Log.v(MyConstant.TAG_DOWNLOADER, "pause all the not finished mask");
         Downloader downloader = new Downloader();
-        for(int i=0; i<mDownloadtask.size(); ++i){
-            ContentValues downloadtask = mDownloadtask.get(i);
+        for(int i=0; i<mRunningDownloadtask.size(); ++i){
+            ContentValues downloadtask = mRunningDownloadtask.get(i);
             downloader.pauseDownload(downloadtask);
         }
-        mDownloadtask.clear();
+        mRunningDownloadtask.clear();
         super.onDestroy();
     }
     @Override
@@ -206,6 +207,19 @@ public class PlayBackService extends Service {
 
     }
 
+    private void play(Uri uri){
+        try{
+            mPlayback.reset();
+            mPlayback.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+            mPlayback.setDataSource(PlayBackService.this, uri);
+            mPlayback.prepareAsync();
+            mMp3Status.updateStatus(PlayBackService.STA_PREPARING, mClients);
+        }catch (IOException e){
+            Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+        }
+    }
+
     private void start() {
         if (mMp3Status.canStart()) {
             mPlayback.start();
@@ -215,10 +229,8 @@ public class PlayBackService extends Service {
 
     private void pause () {
         if (mMp3Status.canPaused()){
-            if (mMp3Status.canPaused()){
-                mPlayback.pause();
-                mMp3Status.updateStatus(PlayBackService.STA_PAUSED, mClients);
-            }
+            mPlayback.pause();
+            mMp3Status.updateStatus(PlayBackService.STA_PAUSED, mClients);
         }
     }
 
@@ -298,22 +310,21 @@ public class PlayBackService extends Service {
         }
     }
 
-    private ContentValues createDownloadTaskById(int id){
+    private ContentValues createRunningDownloadTaskById(int id){
         Downloader downloader = new Downloader();
         ContentValues data = downloader.loadData(PlayBackService.this, id);
-        mDownloadtask.add(data);
+        mRunningDownloadtask.put(id, data);
         return data;
     }
 
-    private ContentValues removeDownloadTaskById(int id){
-        for(int i=0; i<mDownloadtask.size(); ++i){
-            ContentValues downloader =  mDownloadtask.get(i);
-            if(downloader.getAsInteger(Downloader.ID) == id){
-                //return downloader;
-                return mDownloadtask.remove(i);
-            }
-        }
-        return null;
+    private ContentValues removeRunningDownloadTaskById(int id){
+        ContentValues data = mRunningDownloadtask.get(id);
+        mRunningDownloadtask.remove(id);
+        return data;
+    }
+
+    private ContentValues getRunningDownloadTaskByDownloadId(int id){
+        return mRunningDownloadtask.get(id);
     }
 
     private List<ContentValues> loadReclist(int novelid, boolean remote){
@@ -343,10 +354,12 @@ public class PlayBackService extends Service {
         // load it from database;
         newdatas = record.loadDataByNovelId(PlayBackService.this, novelid);
 
+        // load playing status
         for(int i=0; i<newdatas.size(); ++i){
             ContentValues data = newdatas.get(i);
             data.put("item_pos",i);
             data.put("item_mode", 0);
+            // item status
             if (data.getAsInteger(Record.ID) == mMp3Status.itemId){
                 data.put("player_status", mMp3Status.status);
                 data.put("player_curpos", mMp3Status.position);
@@ -358,6 +371,19 @@ public class PlayBackService extends Service {
                 data.put("player_curpos", 0);
                 data.put("player_duration", 0);
                 data.put("player_buffer", 0);
+            }
+
+            // load download status
+            int downloadid = data.getAsInteger(Record.DOWNLOADID);
+            if (downloadid > 0){
+                // load the download Task info
+                // 1 check if the download task is running.
+                // 2 else load it from db;
+                ContentValues downloaddata = getRunningDownloadTaskByDownloadId(downloadid);
+                if (downloaddata == null){
+                    downloaddata = Downloader.loadData(PlayBackService.this, downloadid);
+                }
+                data.putAll(downloaddata);
             }
         }
         return newdatas;
@@ -440,6 +466,11 @@ public class PlayBackService extends Service {
             int downloadid;
             ContentValues downloadtask = null;
             Message rmsg;
+            Integer[] iparams;
+            int recid;
+            int novelid;
+            int strategy;
+
             switch (msg.what){
                 case MSG_LOGIN:
                     addClient(msg.arg1, msg.replyTo);
@@ -449,7 +480,7 @@ public class PlayBackService extends Service {
                     break;
                 case MSG_PLAY:
                     /* init mMp3Status here! very important, take care */
-                    /* play means stoped the current one, and play next*/
+                    /* play means stop the current one, and play next*/
                     // call the client to clean up the last playing item
                     if (msg.arg1 != mMp3Status.itemId) {
                         rmsg = Message.obtain(null, PlayingListActivity.MSG_ON_CLEAN_UP_ITEM_UI);
@@ -468,6 +499,25 @@ public class PlayBackService extends Service {
                     mMp3Status.itemPos = msg.arg2;
 
                     play(url);
+                    break;
+                case MSG_PLAY_LOCAL:
+                    if (msg.arg1 != mMp3Status.itemId){
+                        rmsg = Message.obtain(null, PlayingListActivity.MSG_ON_CLEAN_UP_ITEM_UI);
+                        rmsg.arg1 = mMp3Status.itemId;
+                        rmsg.arg2 = mMp3Status.itemPos;
+                        sendMessage2Client(rmsg, mClients.get(PlayingListActivity.mClientId.getClientID()));
+                    }
+                    mMp3Status.updateStatus();
+                    params = (String)msg.obj;
+                    param = params.split(" ");
+                    String file = param[0];
+                    mMp3Status.contentId = Integer.valueOf(param[1]);
+                    mMp3Status.itemId    = msg.arg1;
+                    mMp3Status.itemPos   = msg.arg2;
+
+                    Uri uri = Uri.parse(file);
+                    play(uri);
+
                     break;
                 case MSG_START:
                     int result = requestAudioFocus();
@@ -509,12 +559,16 @@ public class PlayBackService extends Service {
                     break;
 
                 case MSG_START_DOWNLOAD_REC:
-                    downloadid = (Integer)msg.obj;
+                    iparams = (Integer[])msg.obj;
+                    recid = msg.arg1;
+                    novelid = iparams[0];
+                    strategy = iparams[2];
+                    downloadid = iparams[1];
                     if (downloadid > 0) {
                         // find the downloader first
-                        downloadtask = createDownloadTaskById(downloadid);
+                        downloadtask = createRunningDownloadTaskById(downloadid);
                         if (downloadtask != null) {
-                            new DownloadTask(downloadtask, msg.arg1, msg.arg2).execute();
+                            new DownloadTask(downloadtask,msg.arg1, msg.arg2).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, strategy, recid, novelid);
                         }
                     }else{
                         Log.e(MyConstant.TAG_DOWNLOADER, "had not create the download task!");
@@ -523,11 +577,29 @@ public class PlayBackService extends Service {
 
                 case MSG_PAUSE_DOWNLOAD_REC:
                     downloadid = (Integer)msg.obj;
-                    downloadtask = removeDownloadTaskById(downloadid);
+                    downloadtask = removeRunningDownloadTaskById(downloadid);
                     if (downloadtask != null){
                         new Downloader().pauseDownload(downloadtask);
                     }
                     break;
+
+                case MSG_DELETE_DOWNLOAD_REC:
+                    // TODO : delete the downtask
+                    // 1 check the download status, if downloading. stop it
+                    // 2 delete the downtask from db;
+
+                    downloadid = msg.arg1;
+                    downloadtask = removeRunningDownloadTaskById(downloadid);
+                    if (downloadtask != null) {
+                        new Downloader().pauseDownload(downloadtask);
+                    }
+                    rmsg = Message.obtain();
+                    rmsg.what = PlayingListActivity.MSG_ON_DOWNLOAD_DELETE;
+                    rmsg.arg1 = msg.arg1;
+                    rmsg.arg2 = msg.arg2;
+                    PlayBackService.this.sendMessage(rmsg, mClients);
+                    break;
+
                 default:
                     super.handleMessage(msg);
             }
@@ -540,7 +612,8 @@ public class PlayBackService extends Service {
                                   ,Downloader.OnDownloadDoneListener
                                   ,Downloader.OnDownloadPauseListener
                                   ,Downloader.OnDownloadErrListener
-                                  ,Downloader.OnDownloadStartedListener{
+                                  ,Downloader.OnDownloadStartedListener
+                                  ,Downloader.OnDownloadPreparingListener{
 
         public DownloadTask(ContentValues downloadtask, int id, int pos){
             this.itemId = id;
@@ -549,22 +622,20 @@ public class PlayBackService extends Service {
         }
 
         @Override
-        protected void onPreExecute(){
-            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_READY_DOWNLOAD);
-            sendMessage(msg, mClients);
-        }
-
-        @Override
         protected Integer doInBackground(Integer... params) {
 
             //ContentValues downloadtask = params[0];
             try {
+                int strategy = params[0];
+                int recid    = params[1];
+                int novelid  = params[2];
                 new Downloader().setProgressListener(this)
                                 .setDownloadDoneListener(this)
                                 .setDownloadErrListener(this)
                                 .setDownloadPauseListener(this)
                                 .setDownloadStartedListener(this)
-                                .startDownload(PlayBackService.this, downloadtask);
+                                .setDownloadPreparingListener(this)
+                                .startDownload(PlayBackService.this, downloadtask, strategy, Myfunc.getDownloadConnectionHeader(recid,novelid));
 
             } catch (IOException e) {
                 Log.e(MyConstant.TAG_DOWNLOADER, e.getMessage());
@@ -574,6 +645,7 @@ public class PlayBackService extends Service {
 
         @Override
         protected void onPostExecute (Integer result){
+
             int status = downloadtask.getAsInteger(Downloader.STATUS);
             Message msg = null;
             switch(status){
@@ -592,11 +664,11 @@ public class PlayBackService extends Service {
             if (msg != null){
                 msg.arg1 = itemId;
                 msg.arg2 = itemPos;
-                msg.obj = (Integer)status;
+                msg.obj = downloadtask;
                 sendMessage(msg, mClients);
             }
-            // at last remove the the download task from list
-            mDownloadtask.remove(downloadtask);
+            // if we get here the runtime download task is finished. so remove it from download task list;
+            removeRunningDownloadTaskById(downloadtask.getAsInteger(Downloader.ID));
         }
 
         @Override
@@ -618,38 +690,54 @@ public class PlayBackService extends Service {
         @Override
         public void onDownloadDoneUpdate() {
             // not a UI thread try it
+            /*
             Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_DONE);
             msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
             msg.arg1 = itemId;
             msg.arg2 = itemPos;
             sendMessage(msg, mClients);
+            */
         }
 
         @Override
         public void onDownloadPauseUpdate() {
             // not a UI thread
+            /*
             Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_PAUSED);
             msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
             msg.arg1 = itemId;
             msg.arg2 = itemPos;
             sendMessage(msg, mClients);
+            */
         }
 
         @Override
         public void onDownloadErrUpdate() {
+            /*
             Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_ERR);
             msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+            msg.arg1 = itemId;
+            msg.arg2 = itemPos;
+            sendMessage(msg, mClients);
+            */
+        }
+
+        @Override
+        public void onDownloadStartedUpdate() {
+            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_STARTED);
+            msg.obj = downloadtask;
             msg.arg1 = itemId;
             msg.arg2 = itemPos;
             sendMessage(msg, mClients);
         }
 
         @Override
-        public void onDownloadStartedUpdate() {
-            Message msg = Message.obtain(null, PlayingListActivity.MSG_ON_DOWNLOAD_STARTED);
-            msg.obj = downloadtask.getAsInteger(Downloader.STATUS);
+        public void onDownloadPreparing(){
+            Message msg  = Message.obtain();
             msg.arg1 = itemId;
             msg.arg2 = itemPos;
+            msg.what = PlayingListActivity.MSG_ON_PREPARING_DOWNLOAD;
+            msg.obj  = new Integer(Downloader.STA_PREPARING);
             sendMessage(msg, mClients);
         }
 

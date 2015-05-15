@@ -14,6 +14,7 @@ import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.AnimationDrawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -37,6 +38,8 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.avos.avoscloud.AVObject;
+import com.dodowaterfall.widget.ScaleImageView;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
 import com.handmark.pulltorefresh.library.PullToRefreshBase;
@@ -140,14 +143,14 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
     public final static int MSG_ON_DOWNLOAD_ERR    = 7;
     public final static int MSG_ON_DOWNLOAD_STARTED = 8;
     public final static int MSG_ON_DOWNLOAD_DELETE = 9;
-    public final static int MSG_ON_READY_DOWNLOAD = 5;
+    public final static int MSG_ON_PREPARING_DOWNLOAD = 5;
     public final static int MSG_ON_EXTEND_ITEM = 10;
     public final static int MSG_ON_MP3PROGRESS_UPDTED = 11;
     public final static int MSG_ON_MP3BUFFERING_UPDATED = 12;
     public final static int MSG_ON_CURRENT_STATUS = 13;
     public final static int MSG_ON_CLEAN_UP_ITEM_UI = 14;
     public final static int MSG_ON_SCROLLTO_POS = 15;
-
+    public final static int MSG_SHOWUP_YYT = 16;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -417,6 +420,282 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
         return ""+(min>=10?min:"0"+min)+":"+(second>=10?second:"0"+second);
     }
 
+    public static class DownloadSelectDialog extends DialogFragment{
+        /*
+        public CharSequence[] getSelectText(int r){
+
+            CharSequence[] ts = getActivity().getResources().getTextArray(r);
+
+            if (yyt == null){
+                return ts;
+            }else{
+                CharSequence[] newtx = new CharSequence[ts.length+1];
+
+                for(int i=0; i<ts.length; ++i){
+                    newtx[0] = ts[i];
+                }
+                newtx[ts.length] = yyt.getAsString("name");
+                return newtx;
+            }
+
+        }
+        */
+        @Override
+        public Dialog onCreateDialog(Bundle saveInstanceState){
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setTitle(R.string.download_select_dlg_title);
+            builder.setNegativeButton(R.string.negative, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            if (rdata.getAsInteger(Record.DOWNLOADID) < 0){
+                // new a downloadtask
+                builder.setItems(R.array.download_idle_option, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Record r = new Record();
+                        r.createDownloader(getActivity(), rdata);
+                        //rdata.put(Downloader.STATUS, Downloader.STA_PREPARING);
+                        Message msg = Message.obtain();
+                        try {
+                            switch (which){
+                                case 0:
+                                    // start download
+                                    msg = Message.obtain();
+                                    params[0] = rdata.getAsInteger(Record.NOVELID);
+                                    params[1] = rdata.getAsInteger(Record.DOWNLOADID);
+                                    params[2] = 0;
+                                    msg.obj = params;
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_START_DOWNLOAD_REC;
+                                    playback.send(msg);
+                                    downloadtx.setClickable(false);
+                                    downloadtx.setTextColor(getActivity().getResources().getColor(R.color.plm_download_tx_disable));
+                                    break;
+                                case 1:
+                                    msg = Message.obtain(null, MSG_SHOWUP_YYT);
+                                    itslft.send(msg);
+                                    break;
+                            }
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }else if(rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
+                builder.setItems(R.array.download_started_option, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        try{
+                            Message msg = Message.obtain();
+                            switch (which){
+                                case 0:
+                                    // TODO : paused
+                                    msg.obj = new Integer(rdata.getAsString(Record.DOWNLOADID));
+                                    msg.what = PlayBackService.MSG_PAUSE_DOWNLOAD_REC;
+                                    playback.send(msg);
+                                    break;
+                                /*
+                                case 1:
+                                    // TODO : delete the file
+                                    msg.obj = new Integer(rdata.getAsInteger(Record.DOWNLOADID));
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_DELETE_DOWNLOAD_REC;
+                                    break;
+                                    */
+                                case 1:
+                                    msg = Message.obtain(null, MSG_SHOWUP_YYT);
+                                    itslft.send(msg);
+                                    break;
+                            }
+
+                        }catch(RemoteException e){}
+                    }
+                });
+            }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED || rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
+                builder.setItems(R.array.download_paused_option, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Message msg = Message.obtain();
+                        try{
+                            switch (which){
+                                case 0:
+                                    // TODO : started
+                                    params[0] = rdata.getAsInteger(Record.NOVELID);
+                                    params[1] = rdata.getAsInteger(Record.DOWNLOADID);
+                                    params[2] = 0;
+                                    msg.obj = params;
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_START_DOWNLOAD_REC;
+                                    downloadtx.setClickable(false);
+                                    downloadtx.setTextColor(getActivity().getResources().getColor(R.color.plm_download_tx_disable));
+                                    playback.send(msg);
+                                    break;
+                                case 1:
+                                    // TODO : delete the file
+                                    msg.obj = new Integer(rdata.getAsInteger(Record.DOWNLOADID));
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_DELETE_DOWNLOAD_REC;
+                                    playback.send(msg);
+                                    break;
+                                case 2:
+                                    msg = Message.obtain(null, MSG_SHOWUP_YYT);
+                                    itslft.send(msg);
+                                    break;
+                            }
+
+                            //dialog.dismiss();
+                        }catch (RemoteException e){}
+                    }
+                });
+            }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE){
+
+                builder.setItems(R.array.download_done_option, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // TODO : delete
+
+                        try {
+                            switch (which) {
+                                case 0:
+                                    Message msg = Message.obtain();
+                                    msg.obj = new Integer(rdata.getAsInteger(Record.DOWNLOADID));
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_DELETE_DOWNLOAD_REC;
+                                    playback.send(msg);
+                                    break;
+                                case 1:
+                                    msg = Message.obtain(null, MSG_SHOWUP_YYT);
+                                    itslft.send(msg);
+                                    break;
+                            }
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
+
+                builder.setItems(R.array.download_err_option, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Message msg = Message.obtain();
+                        try{
+                            switch (which){
+                                case 0:
+                                    // TODO : started again
+                                    params[0] = rdata.getAsInteger(Record.NOVELID);
+                                    params[1] = rdata.getAsInteger(Record.DOWNLOADID);
+                                    params[2] = 1;
+                                    msg.obj = params;
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_START_DOWNLOAD_REC;
+                                    playback.send(msg);
+                                    downloadtx.setClickable(false);
+                                    downloadtx.setTextColor(getActivity().getResources().getColor(R.color.plm_download_tx_disable));
+                                    break;
+                                case 1:
+                                    // TODO : delete the file
+                                    msg.obj = new Integer(rdata.getAsInteger(Record.DOWNLOADID));
+                                    msg.arg1 = rdata.getAsInteger(Record.ID);
+                                    msg.arg2 = rdata.getAsInteger("item_pos");
+                                    msg.what = PlayBackService.MSG_DELETE_DOWNLOAD_REC;
+                                    playback.send(msg);
+                                    break;
+                                case 2:
+                                    msg = Message.obtain(null, MSG_SHOWUP_YYT);
+                                    itslft.send(msg);
+                                    break;
+                            }
+                        }catch (RemoteException e){}
+                    }
+                });
+            }
+            return builder.create();
+        }
+
+        //public int download_status;
+        //public int downloadid;
+        public Messenger playback;
+        public Messenger itslft;
+        public ContentValues rdata;
+        public ContentValues yyt;
+        public TextView downloadtx;
+        Integer[] params = new Integer[3];
+    }
+
+    public static class YytDialogFragmeng extends  DialogFragment {
+
+        @Override
+        public Dialog onCreateDialog (Bundle saveInstanceState){
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            LayoutInflater inflater = getActivity().getLayoutInflater();
+            View view = inflater.inflate(R.layout.yyt_dlg, null);
+            poster = (ScaleImageView) view.findViewById(R.id.yyt_poster);
+            poster.setImageHeight(600);
+            poster.setImageWidth(400);
+            TextView  desc   = (TextView) view.findViewById(R.id.yyt_desc);
+            builder.setTitle(yyt.getAsString("name")+"(广告)");
+
+            NetBitMap netbmp = new NetBitMap(getActivity(), yyt.getAsString("poster"), R.drawable.yyt_logo);
+            poster.setImageBitmap(netbmp.getBitmap(new NetBitMap.LoadBitmapCallback() {
+                @Override
+                public void done(Bitmap bm, Object error) {
+                    if (bm != null)
+                    poster.setImageBitmap(bm);
+                }
+            }));
+            poster.setTag(yyt.getAsString("wdi"));
+            poster.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String url = (String) v.getTag();
+                    Intent intent = new Intent();
+                    intent.setAction("android.intent.action.VIEW");
+                    Uri content_url = Uri.parse(url);
+                    intent.setData(content_url);
+                    getActivity().startActivity(intent);
+                    YytDialogFragmeng.this.dismiss();
+                }
+            });
+
+            desc.setText("      " + yyt.getAsString("desc"));
+            desc.setTag(yyt.getAsString("wdi"));
+            desc.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    String url = (String) v.getTag();
+                    Intent intent = new Intent();
+                    intent.setAction("android.intent.action.VIEW");
+                    Uri content_url = Uri.parse(url);
+                    intent.setData(content_url);
+                    getActivity().startActivity(intent);
+                    YytDialogFragmeng.this.dismiss();
+                }
+            });
+            builder.setNegativeButton(R.string.negative, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            builder.setView(view);
+            return builder.create();
+        }
+        ContentValues yyt;
+        // ui
+        ScaleImageView poster;
+
+    }
+
     public static class ShareDialogFragment extends DialogFragment {
 
         @Override
@@ -431,7 +710,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
             weibo_bt.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Oauth2AccessToken accessToken = AccessTokenkeeper.readAccessToken(activity.getApplicationContext());
+                    Oauth2AccessToken accessToken = AccessTokenkeeper.readAccessToken(getActivity().getApplicationContext());
 
                     if (accessToken != null && accessToken.isSessionValid()){
 
@@ -452,7 +731,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
 
                             // create the img
                             try {
-                                String fbmp = activity.getCacheDir() + "/" + Myfunc.md5(nvl_pic) + ".jpg";
+                                String fbmp = getActivity().getCacheDir() + "/" + Myfunc.md5(nvl_pic) + ".jpg";
                                 Bitmap bitmap = BitmapFactory.decodeFile(fbmp);
                                 if (bitmap != null) {
                                     ImageObject imageObject = new ImageObject();
@@ -474,13 +753,13 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                         request.transaction = String.valueOf(System.currentTimeMillis());
                         request.multiMessage = message;
 
-                        AuthInfo authInfo = new AuthInfo(activity, Myfunc.getValidText(MyConstant.WEIBO_APP_KEY), MyConstant.WEIBO_REDIRECT_URL, MyConstant.WEIBO_SCOPE);
+                        AuthInfo authInfo = new AuthInfo(getActivity(), Myfunc.getValidText(MyConstant.WEIBO_APP_KEY), MyConstant.WEIBO_REDIRECT_URL, MyConstant.WEIBO_SCOPE);
 
-                        weiboShareAPI.sendRequest(activity, request, authInfo, accessToken.getToken(), new WeiboAuthListener(){
+                        weiboShareAPI.sendRequest(getActivity(), request, authInfo, accessToken.getToken(), new WeiboAuthListener(){
                             @Override
                             public void onComplete(Bundle bundle) {
                                 Oauth2AccessToken newToken = Oauth2AccessToken.parseAccessToken(bundle);
-                                AccessTokenkeeper.writeAccessToken(activity.getApplicationContext(), newToken);
+                                AccessTokenkeeper.writeAccessToken(getActivity().getApplicationContext(), newToken);
                             }
 
                             @Override
@@ -496,7 +775,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                         dialog.dismiss();
                     }else{
                         // TODO : showfm had no login sina weibo
-                        Toast.makeText(activity, R.string.login_with_sina, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(getActivity(), R.string.login_with_sina, Toast.LENGTH_SHORT).show();
                     }
                 }
             });
@@ -522,7 +801,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     message.description = nvl_name + " - "+rec_name;
 
 
-                    Bitmap bmp = BitmapFactory.decodeResource(activity.getResources(), R.drawable.showfm_64);
+                    Bitmap bmp = BitmapFactory.decodeResource(getActivity().getResources(), R.drawable.showfm_64);
                     if (bmp != null)
                         message.thumbData = Myfunc.bmpToByteArray(bmp);
 
@@ -554,7 +833,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     message.description = nvl_name + " - "+rec_name;
 
 
-                    Bitmap bmp = BitmapFactory.decodeResource(activity.getResources(), R.drawable.showfm_64);
+                    Bitmap bmp = BitmapFactory.decodeResource(getActivity().getResources(), R.drawable.showfm_64);
                     if (bmp != null)
                         message.thumbData = Myfunc.bmpToByteArray(bmp);
 
@@ -610,7 +889,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
         public String nvl_name;
         public String nvl_pic;
         public String nvl_folder;
-        public Activity activity;
+        //public Activity activity;
         IWeiboShareAPI weiboShareAPI;
         IWXAPI         wxApi;
     }
@@ -720,6 +999,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                 holder.plm_rec_nj = (TextView)convertView.findViewById(R.id.plm_rec_nj);
                 //holder.plm_rec_updated = (TextView)convertView.findViewById(R.id.plm_rec_updated);
                 holder.plm_rec_timer = (TextView)convertView.findViewById(R.id.plm_rec_timer);
+                // share text
                 holder.plm_share_tx  = (TextView)convertView.findViewById(R.id.plm_share_tx);
                 holder.plm_share_tx.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -727,7 +1007,6 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                         // todo new show a share dialog here
                         ContentValues data = (ContentValues) v.getTag();
                         ShareDialogFragment dialogFragment = new ShareDialogFragment();
-                        dialogFragment.activity = PlayingListActivity.this;
                         dialogFragment.rec_id = data.getAsInteger("rec_id");
                         dialogFragment.rec_name = data.getAsString("rec_name");
                         dialogFragment.rec_url  = data.getAsString("rec_url");
@@ -741,6 +1020,30 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                 });
                 holder.plm_share_tx.setTag(new ContentValues());
                 holder.plm_share_tx.getPaint().setUnderlineText(true);
+                // share text
+
+                // download text
+                holder.plm_download_tx = (TextView)convertView.findViewById(R.id.plm_download_tx);
+                holder.plm_download_tx.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        ContentValues rdata = (ContentValues)v.getTag();
+                        // show up the dialog. tell what to do next
+                        if (rdata.getAsInteger(Record.DOWNLOADID) > 0 && rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_PREPARING){
+                            Toast.makeText(PlayingListActivity.this, R.string.download_preparing, Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        DownloadSelectDialog downloadDlgFragment = new DownloadSelectDialog();
+                        downloadDlgFragment.playback = mPlayback;
+                        downloadDlgFragment.itslft   = mItSelf;
+                        downloadDlgFragment.rdata = rdata;
+                        downloadDlgFragment.downloadtx = (TextView)v;
+                        //downloadDlgFragment.yyt = Myfunc.getYytRandom();
+                        downloadDlgFragment.show(getFragmentManager(), "downloadDlg");
+                    }
+                });
+                holder.plm_download_tx.getPaint().setUnderlineText(true);
+                // end download text
                 holder.plm_seekbar = (SeekBar)convertView.findViewById(R.id.plm_player_skb);
                 holder.plm_seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                     @Override
@@ -761,36 +1064,77 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
 
                     @Override
                     public void onStartTrackingTouch(SeekBar seekBar) {
-
                     }
 
                     @Override
                     public void onStopTrackingTouch(SeekBar seekBar) {
-
                     }
                 });
                 holder.plm_playerbt = (ImageButton)convertView.findViewById(R.id.plm_playerbt);
                 holder.plm_playerbt.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        if (isNovelMode()){
-                            ContentValues rdata = (ContentValues)v.getTag();
+
+
+                        if (isNovelMode()) {
+                            ContentValues rdata = (ContentValues) v.getTag();
                             if (rdata.getAsInteger("player_status") == PlayBackService.STA_IDLE
-                              || rdata.getAsInteger("player_status") == PlayBackService.STA_ERROR){
-                                // Status of idle or error, play it
-                                String url = rdata.getAsString(Record.URL);
-                                String[] param = new String[2];
+                                    || rdata.getAsInteger("player_status") == PlayBackService.STA_ERROR) {
+
+                                // showup yyt
+                                ContentValues yyt = Myfunc.getYytRandom();
+                                if (yyt != null){
+                                    YytDialogFragmeng yytDlg = new YytDialogFragmeng();
+                                    yytDlg.yyt = yyt;
+                                    yytDlg.show(getFragmentManager(), "yytdlg");
+                                }
+
                                 try {
-                                    url = Myfunc.getValidUrl(mNovelFolder+"/", url, 1800);
-                                    Message msg = Message.obtain(null, PlayBackService.MSG_PLAY);
-                                    msg.obj = url+" "+rdata.getAsInteger(Record.NOVELID);
+                                    Message msg = null;
+                                    if (rdata.getAsInteger(Record.DOWNLOADID) > 0) {
+                                        // it can be played locally
+                                        if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE) {
+                                            msg = Message.obtain(null, PlayBackService.MSG_PLAY_LOCAL);
+                                            msg.obj = rdata.getAsString(Downloader.PATH) + rdata.getAsString(Downloader.FILENAME) + " " + rdata.getAsInteger(Record.NOVELID);
+                                            msg.arg1 = rdata.getAsInteger(Record.ID);
+                                            msg.arg2 = rdata.getAsInteger("item_pos");
+                                            mPlayback.send(msg);
+                                            Toast.makeText(PlayingListActivity.this, R.string.play_local, Toast.LENGTH_SHORT).show();
+                                            return;
+                                        } else if (rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED
+                                                || rdata.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED) {
+                                            Toast.makeText(PlayingListActivity.this, R.string.downloading_tips, Toast.LENGTH_SHORT).show();
+                                            return;
+                                        }
+                                    }
+
+                                    // Status of idle or error, play it
+                                    String url = rdata.getAsString(Record.URL);
+                                    String[] param = new String[2];
+
+                                    url = Myfunc.getValidUrl(mNovelFolder + "/", url, 1800);
+                                    msg = Message.obtain(null, PlayBackService.MSG_PLAY);
+                                    msg.obj = url + " " + rdata.getAsInteger(Record.NOVELID);
                                     msg.arg1 = rdata.getAsInteger(Record.ID);
                                     msg.arg2 = rdata.getAsInteger("item_pos");
                                     mPlayback.send(msg);
+                                    Toast.makeText(PlayingListActivity.this, R.string.play_remote, Toast.LENGTH_SHORT).show();
+                                    // add the play item count
+                                    AVObject playingcount = new AVObject("Playing_counter");
+                                    playingcount.put("novelId", mNovelId);
+                                    playingcount.put("recordId", rdata.getAsInteger(Record.ID));
+
+                                    if (MyLogin.getInstance().getAVOSUser() != null) {
+                                        playingcount.put("user", MyLogin.getInstance().getAVOSUser());
+                                    }
+                                    playingcount.saveInBackground();
+
                                 } catch (NoSuchAlgorithmException e) {
-                                } catch (RemoteException e) {Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());}
-                            }else if (rdata.getAsInteger("player_status") == PlayBackService.STA_PAUSED
-                                    ||rdata.getAsInteger("player_status") == PlayBackService.STA_COMPLETED) {
+                                } catch (RemoteException e) {
+                                    Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
+                                }
+                            } else if (rdata.getAsInteger("player_status") == PlayBackService.STA_PAUSED
+                                    || rdata.getAsInteger("player_status") == PlayBackService.STA_COMPLETED) {
                                 // Status of paused, start it
                                 Message msg = Message.obtain(null, PlayBackService.MSG_START);
                                 msg.arg1 = 1;
@@ -799,7 +1143,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                                 } catch (RemoteException e) {
                                     Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                                 }
-                            }else if (rdata.getAsInteger("player_status") == PlayBackService.STA_STARTED){
+                            } else if (rdata.getAsInteger("player_status") == PlayBackService.STA_STARTED) {
                                 // Status of playing, paused it
                                 Message msg = Message.obtain(null, PlayBackService.MSG_PAUSE);
                                 try {
@@ -814,7 +1158,6 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                 convertView.setTag(holder);
             }else{
                 holder = (Holder)convertView.getTag();
-
             }
             // ui update
             if (isNovelMode()){
@@ -877,29 +1220,88 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     values.put("nvl_pic", getIntent().getStringExtra("nvlposter"));
                     values.put("nvl_folder", getIntent().getStringExtra("nvlf"));
                     // end share data
+
+                    // download data update
+                    holder.plm_download_tx.setTag(data);
+                    int downloadid = data.getAsInteger(Record.DOWNLOADID);
+                    if (downloadid <=0){
+                        // do not started download yet
+                        holder.plm_download_tx.setText(R.string.download);
+                    }else{
+                        if (data.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE){
+                            holder.plm_download_tx.setText(R.string.download_done);
+                            holder.plm_download_tx.setClickable(true);
+                            holder.plm_download_tx.setTextColor(getResources().getColor(R.color.plm_download_tx_enable));
+                        }else if (data.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
+                            String format = getResources().getString(R.string.download_err);
+                            String text = String.format(format, data.getAsString(Downloader.ERR));
+                            holder.plm_download_tx.setText(text);
+                            holder.plm_download_tx.setClickable(true);
+                            holder.plm_download_tx.setTextColor(getResources().getColor(R.color.plm_download_tx_enable));
+                        }else if (data.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
+                            String format = getResources().getString(R.string.download_paused);
+                            String text = String.format(format, data.containsKey("download_progress")?data.getAsInteger("download_progress"):"0");
+                            holder.plm_download_tx.setText(text);
+                            holder.plm_download_tx.setClickable(true);
+                            holder.plm_download_tx.setTextColor(getResources().getColor(R.color.plm_download_tx_enable));
+                        }else if (data.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
+                            String format = getResources().getString(R.string.download_started);
+                            String text = String.format(format, data.containsKey("download_progress")?data.getAsInteger("download_progress"):"0");
+                            holder.plm_download_tx.setText(text);
+                            holder.plm_download_tx.setClickable(true);
+                            holder.plm_download_tx.setTextColor(getResources().getColor(R.color.plm_download_tx_enable));
+                        }else if (data.getAsInteger(Downloader.STATUS) == Downloader.STA_PREPARING){
+                            holder.plm_download_tx.setText(R.string.download_preparing);
+                        }
+                    }
+                    // end download data update
                 }else{
                     // easy mode
 
                     holder.esm.setVisibility(View.VISIBLE);
+                    if(Myfunc.diffDay(data.getAsLong(Record.UPDATED)) < 1){
+                        holder.esm_title.setText(data.getAsString(Record.NAME)+" ("+getResources().getString(R.string.new_novel)+")");
+                    }else{
+                        holder.esm_title.setText(data.getAsString(Record.NAME));
+                    }
 
-                    holder.esm_title.setText(data.getAsString(Record.NAME));
                     if (mExtendItemPos > 0){
                         // some item has extended grad it
                         holder.esm_title.setTextColor(getResources().getColor(R.color.esm_item_grey));
+                    }else if (Myfunc.diffDay(data.getAsLong(Record.UPDATED))< 1){
+                        holder.esm_title.setTextColor(getResources().getColor(R.color.novel_item_new_updated));
                     }else{
                         holder.esm_title.setTextColor(getResources().getColor(R.color.esm_item_black));
                     }
 
-                    if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
-                        if (data.getAsInteger(Record.READ) == 0)
-                            holder.esm_status.setImageResource(R.drawable.esm_unread);
-                        else
-                            holder.esm_status.setImageResource(R.drawable.esm_read);
-                    }else if (data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
-                        holder.esm_status.setImageResource(R.drawable.esm_play_err);
+                    if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_STARTED){
+                        holder.esm_status.setImageResource(R.drawable.esm_download_started);
+                    }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
+                        holder.esm_status.setImageResource(R.drawable.esm_download_paused);
+                    }else if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
+                        holder.esm_status.setImageResource(R.drawable.esm_download_err);
                     }else{
-                        holder.esm_status.setImageResource(R.drawable.esm_play);
+                        if (data.getAsInteger("player_status") == PlayBackService.STA_IDLE){
+                            if (data.getAsInteger(Record.READ) == 0) {
+                                if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE){
+                                    holder.esm_status.setImageResource(R.drawable.down_unread);
+                                }else {
+                                    holder.esm_status.setImageResource(R.drawable.esm_unread);
+                                }
+                            }else {
+                                if (data.getAsInteger(Record.DOWNLOADID) > 0 && data.getAsInteger(Downloader.STATUS) == Downloader.STA_DONE){
+                                    holder.esm_status.setImageResource(R.drawable.down_read);
+                                }else {
+                                    holder.esm_status.setImageResource(R.drawable.esm_read);
+                                }
+                            }
+                        }else if (data.getAsInteger("player_status") == PlayBackService.STA_ERROR){
+                            holder.esm_status.setImageResource(R.drawable.esm_play_err);
+                        }else{
+                            holder.esm_status.setImageResource(R.drawable.esm_play);
+                        }
                     }
+
 
                     holder.plm.setVisibility(View.GONE);
 
@@ -927,6 +1329,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
             TextView plm_share_tx;
             //TextView plm_rec_updated;
             TextView plm_rec_timer;
+            TextView plm_download_tx;
             AnimationDrawable recLoading;
            // TextView plm_playtime;
         }
@@ -942,6 +1345,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
             int validpos = 0;
             PlayBackService.Status status = null;
             ContentValues data = null;
+            ContentValues download = null;
             switch(msg.what){
                 case MSG_ON_CURRENT_STATUS:
                     status = (PlayBackService.Status)msg.obj;
@@ -999,7 +1403,6 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                         } catch (RemoteException e) {
                             Log.e(MyConstant.TAG_PLAYBACK, e.getMessage());
                         }
-
                     }else if (status.status == PlayBackService.STA_STARTED){
 
                         itemid = status.itemId;
@@ -1113,7 +1516,7 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     validpos = getValidPos(itemid, itempos);
                     if (validpos >=0 ) {
                         data = mPlaying_data.get(validpos);
-                        data.put("progress", (Integer) msg.obj);
+                        data.put("download_progress", (Integer) msg.obj);
                         data.put(Downloader.STATUS, Downloader.STA_STARTED);
                     }
                     if (isVisiblePosition(validpos))
@@ -1125,7 +1528,9 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     validpos = getValidPos(itemid, itempos);
                     if (validpos >= 0) {
                         data = mPlaying_data.get(validpos);
-                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                        download = (ContentValues) msg.obj;
+                        data.putAll(download);
+                        //data.put(Downloader.STATUS, (Integer) msg.obj);
                     }
                     if (isVisiblePosition(validpos))
                         mMyadapter.notifyDataSetChanged();
@@ -1137,7 +1542,8 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     validpos = getValidPos(itemid, itempos);
                     if (validpos >=0 ) {
                         data = mPlaying_data.get(validpos);
-                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                        download = (ContentValues)msg.obj;
+                        data.putAll(download);
                     }
                     if (isVisiblePosition(validpos)){
                         mMyadapter.notifyDataSetChanged();
@@ -1149,7 +1555,8 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     validpos = getValidPos(itemid, itempos);
                     if (validpos >=0 ) {
                         data = mPlaying_data.get(validpos);
-                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                        download = (ContentValues)msg.obj;
+                        data.putAll(download);
                     }
                     if (isVisiblePosition(validpos)){
                         mMyadapter.notifyDataSetChanged();
@@ -1161,17 +1568,58 @@ public class PlayingListActivity extends Activity implements IWeiboHandler.Respo
                     validpos = getValidPos(itemid, itempos);
                     if (validpos >=0) {
                         data = mPlaying_data.get(validpos);
-                        data.put(Downloader.STATUS, (Integer) msg.obj);
+                        download = (ContentValues)msg.obj;
+                        data.putAll(download);
+                    }
+                    if (isVisiblePosition(validpos)){
+                        mMyadapter.notifyDataSetChanged();
+                    }
+                    break;
+                case MSG_ON_PREPARING_DOWNLOAD:
+                    itemid = msg.arg1;
+                    itempos = msg.arg2;
+                    validpos = getValidPos(itemid, itempos);
+                    if (validpos >=0){
+                        data = mPlaying_data.get(validpos);
+                        data.put(Downloader.STATUS, (Integer)msg.obj);
                     }
                     if (isVisiblePosition(validpos)){
                         mMyadapter.notifyDataSetChanged();
                     }
                     break;
                 case MSG_ON_DOWNLOAD_DELETE:
+                    itemid = msg.arg1;
+                    itempos = msg.arg2;
+                    validpos = getValidPos(itemid, itempos);
+                    if (validpos >=0){
+                        data = mPlaying_data.get(validpos);
+                        Record r = new Record();
+                        r.deleteDownloader(PlayingListActivity.this, data);
+                        data.remove(Downloader.FILENAME);
+                        data.remove(Downloader.STATUS);
+                        data.remove(Downloader.ERR);
+                        data.remove(Downloader.FILESZ);
+                        data.remove(Downloader.ID);
+                        data.remove(Downloader.LASTPOS);
+                        data.remove(Downloader.PATH);
+                        data.remove(Downloader.URL);
+                    }
+                    if (isVisiblePosition(validpos)){
+                        mMyadapter.notifyDataSetChanged();
+                    }
                     mMyadapter.notifyDataSetChanged();
                     break;
                 case MSG_ON_EXTEND_ITEM:
                     mMyadapter.notifyDataSetChanged();
+                    break;
+                case MSG_SHOWUP_YYT:
+                    ContentValues yyt = Myfunc.getYytRandom();
+                    if (yyt != null){
+                        YytDialogFragmeng yytDialogFragmeng = new YytDialogFragmeng();
+                        yytDialogFragmeng.yyt = yyt;
+                        yytDialogFragmeng.show(getFragmentManager(), "yytdlg");
+                    }
+
                     break;
                 default:
                     super.handleMessage(msg);

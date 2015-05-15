@@ -7,7 +7,7 @@
 
     <com.dodowaterfall.widget.ScaleImageView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:id="@+id/nvl_img_view"
         android:layout_gravity="center_horizontal"
         android:layout_centerHorizontal="true" />

@@ -12,6 +12,10 @@ import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.avos.avoscloud.AVException;
+import com.avos.avoscloud.AVObject;
+import com.avos.avoscloud.AVQuery;
+import com.avos.avoscloud.FindCallback;
 import com.umeng.analytics.MobclickAgent;
 
 import org.json.JSONException;
@@ -40,6 +44,39 @@ public class StartupActivity extends Activity {
         setContentView(R.layout.activity_startup);
         mStarupTips = (TextView)findViewById(R.id.start_up_text);
         new loadDataTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+
+        AVQuery<AVObject> query = new AVQuery<AVObject>("AdControl");
+        query.findInBackground(new FindCallback<AVObject>() {
+            @Override
+            public void done(List<AVObject> avObjects, AVException e) {
+                if (e == null){
+                    for(int i=0; i<avObjects.size(); ++i){
+                        AVObject c = avObjects.get(i);
+                        int s = c.getInt("showup");
+                        int t = c.getInt("total");
+                        Myfunc.setShowUpChance(s, t);
+                    }
+                }
+            }
+        });
+
+        query = new AVQuery<AVObject>("YiYangTang");
+        query.findInBackground(new FindCallback<AVObject>() {
+            @Override
+            public void done(List<AVObject> avObjects, AVException e) {
+                if (e == null){
+                    for (int i=0; i<avObjects.size(); ++i){
+                        ContentValues values = new ContentValues();
+                        AVObject avo = avObjects.get(i);
+                        values.put("name", avo.getString("name"));
+                        values.put("poster", avo.getString("poster"));
+                        values.put("wdi", avo.getString("wdi"));
+                        values.put("desc", avo.getString("desc"));
+                        Myfunc.yyts.add(values);
+                    }
+                }
+            }
+        });
     }
 
     @Override

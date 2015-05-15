@@ -69,7 +69,7 @@ public class MyOpenHelper extends SQLiteOpenHelper{
                                                         + MyConstant.RECORD_ID + " INTEGER DEFAULT 0, "
                                                         + MyConstant.RECORD_NAME + " INTEGER DEFAULT 0, "
                                                         + MyConstant.POSITION + " UNSIGNED BIG INT DEFAULT 0 "
-                                                        + " ) ";
+                                                        + " ); ";
 
     MyOpenHelper(Context c){
         super(c, DATABASE, null, DATABASE_VERSION);

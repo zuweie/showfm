@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:name=".ShowfmApplication"
+        android:name="com.geekfocus.zuweie.showfm.ShowfmApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name" >
@@ -28,9 +28,9 @@
             </intent-filter>
         </activity>
         <activity
-            android:launchMode="singleTask"
             android:name="com.geekfocus.zuweie.showfm.MainActivity"
             android:label="@string/showfm"
+            android:launchMode="singleTask"
             android:theme="@style/AppTheme" >
         </activity>
         <activity
@@ -50,26 +50,24 @@
             android:name="com.sina.weibo.sdk.component.WeiboSdkBrowser"
             android:configChanges="keyboardHidden|orientation"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize"
-            android:theme="@style/AppTheme">
+            android:theme="@style/AppTheme"
+            android:windowSoftInputMode="adjustResize" >
         </activity>
         <activity
             android:name="com.geekfocus.zuweie.showfm.SettingActivity"
             android:label="@string/title_activity_setting"
-            android:theme="@style/AppTheme">
+            android:theme="@style/AppTheme" >
         </activity>
         <activity
             android:name="com.geekfocus.zuweie.showfm.NovelCommentActivity"
             android:label="@string/title_activity_novel_comment"
-            android:theme="@style/AppTheme">
+            android:theme="@style/AppTheme" >
         </activity>
-
-        <activity android:name="com.facebook.FacebookActivity"
-            android:configChanges=
-                "keyboard|keyboardHidden|screenLayout|screenSize|orientation"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:label="@string/app_name" />
-
+        <activity
+            android:name="com.facebook.FacebookActivity"
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:label="@string/app_name"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity
             android:name="com.google.android.gms.ads.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
@@ -80,10 +78,11 @@
             android:enabled="true"
             android:exported="true" >
         </service>
+        <service android:name="com.avos.avoscloud.PushService" />
 
-        <service android:name="com.avos.avoscloud.PushService"></service>
-        <activity android:name="com.avos.avoscloud.feedback.ThreadActivity"></activity>
-        <receiver android:name="com.avos.avoscloud.AVBroadcastReceiver">
+        <activity android:name="com.avos.avoscloud.feedback.ThreadActivity" />
+
+        <receiver android:name="com.avos.avoscloud.AVBroadcastReceiver" >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.USER_PRESENT" />
@@ -93,11 +92,14 @@
         <meta-data
             android:name="UMENG_APPKEY"
             android:value="54d038cafd98c5d26b000ed1" />
-
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id" />
 
+        <activity
+            android:name="com.geekfocus.zuweie.showfm.FlyingTextActivity"
+            android:label="@string/title_activity_flying_text" >
+        </activity>
     </application>
 
 </manifest>

@@ -6,4 +6,6 @@
     <color name="novel_detail_cim_border2">#96c4c84a</color>
     <color name="novel_item_new_updated">#ffff1721</color>
     <color name="novel_item__normal">#FF4200B9</color>
+    <color name="plm_download_tx_disable">#ff9b9b9b</color>
+    <color name="plm_download_tx_enable">#FF1ECC17</color>
 </resources>

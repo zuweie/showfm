@@ -15,8 +15,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by zuweie on 12/16/14.
@@ -37,14 +36,16 @@ public class Downloader {
     public final static int STA_STARTED = 1;
     public final static int STA_PAUSED = 2;
     public final static int STA_DONE = 3;
+    public final static int STA_PREPARING = 4;
     public final static int STA_ERR = -1;
 
-    public float mReportFrequency = 0.05f;
+    public float mReportFrequency = 0.01f;
     private OnProgressListener mListener;
     private OnDownloadDoneListener mDoneListener;
     private OnDownloadPauseListener mPauseListener;
     private OnDownloadErrListener mErrListener;
     private OnDownloadStartedListener mStartedListener;
+    private OnDownloadPreparingListener mPreparingListener;
 
     /*listener*/
     public static interface OnProgressListener {
@@ -65,6 +66,10 @@ public class Downloader {
 
     public static interface OnDownloadStartedListener {
         public void onDownloadStartedUpdate();
+    }
+
+    public static interface OnDownloadPreparingListener {
+        public void onDownloadPreparing ();
     }
     /*listener*/
 
@@ -91,6 +96,11 @@ public class Downloader {
 
     public Downloader setDownloadStartedListener(OnDownloadStartedListener l){
         this.mStartedListener = l;
+        return this;
+    }
+
+    public Downloader setDownloadPreparingListener(OnDownloadPreparingListener l){
+        this.mPreparingListener = l;
         return this;
     }
     /* set listener */
@@ -165,6 +175,7 @@ public class Downloader {
         data.put(Downloader.PATH, path);
         data.put(Downloader.URL, url);
         long rid = saveData(c, data);
+        data = null;
         return rid;
     }
 
@@ -188,27 +199,29 @@ public class Downloader {
     }
 
 
-    public HttpURLConnection getConnection(long downloadStart, ContentValues data) throws IOException, NoSuchAlgorithmException {
+    public HttpURLConnection getConnection(long downloadStart, ContentValues data, ContentValues header) throws IOException, NoSuchAlgorithmException {
 
         String itemurl = data.getAsString(Downloader.URL);
-
         URL url = new URL(Myfunc.getValidUrl("",itemurl, 900));
-
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setConnectTimeout(5 * 1000);
         conn.setRequestMethod("GET");
-        conn.setRequestProperty("Accept", "image/gif, image/jpeg, image/pjpeg, image/pjpeg, application/x-shockwave-flash, application/xaml+xml, application/vnd.ms-xpsdocument, application/x-ms-xbap, application/x-ms-application, application/vnd.ms-excel, application/vnd.ms-powerpoint, application/msword, */*");
-        conn.setRequestProperty("Accept-Language", "zh-CN");
-        //conn.setRequestProperty("Referer", mUrl);
-        conn.setRequestProperty("Charset", "UTF-8");
-        conn.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.2; Trident/4.0; .NET CLR 1.1.4322; .NET CLR 2.0.50727; .NET CLR 3.0.04506.30; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729)");
-        conn.setRequestProperty("Connection", "Keep-Alive");
+
+        // set connection header
+        Set<String> keys = header.keySet();
+        Iterator<String> it = keys.iterator();
+        while (it.hasNext()){
+            String key = it.next();
+            conn.setRequestProperty(key, header.getAsString(key));
+        }
+        // end set connection header
+
         if (downloadStart > 0)
             conn.setRequestProperty("Range", "bytes="+downloadStart+"-");
         return  conn;
     }
 
-    public int startDownload(Context c, ContentValues downloadtask) throws IOException {
+    public int startDownload(Context c, ContentValues downloadtask, int strategy, ContentValues header) throws IOException {
 
         // get a ouput file
         int sz = 0;
@@ -225,27 +238,33 @@ public class Downloader {
         synchronized (downloadtask){
 
             if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE
-            || downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
+            || downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED
+            || downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
                 try{
+                    onDownloadPreparing();
                     Log.v(MyConstant.TAG_DOWNLOADER, "get ready to download");
                     String f = downloadtask.getAsString(Downloader.PATH) + downloadtask.getAsString(Downloader.FILENAME);
                     file = new File(f);
-                    if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
-                        // create the new download file;
-                        fos = new FileOutputStream(f);
-                    }else if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED){
-                        // open the old download file;
+
+                    // 当下载出现错误的时候, strategy 将会指示下载方式。0为重新下载，1为断点下载。
+                    if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_PAUSED
+                       || (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR && strategy == 1)){
+                        // 断点下载
                         fos = new FileOutputStream(f, true);
-                        //file = new File(f);
                         if (file.exists()) {
                             lastpos = file.length();
                             Log.d(MyConstant.TAG_DOWNLOADER, "download start "+lastpos);
                         }
+                    }else if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE
+                           || downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_ERR){
+                        // 重新下载
+                        fos = new FileOutputStream(f);
                     }
-                    connection = getConnection(lastpos, downloadtask);
+
+                    connection = getConnection(lastpos, downloadtask, header);
                     connection.connect();
                     // for debug
-                    printHeader(connection.getHeaderFields());
+                    //printHeader(connection.getHeaderFields());
 
                     if (downloadtask.getAsInteger(Downloader.STATUS) == Downloader.STA_IDLE){
                         contentlong = connection.getContentLength();
@@ -340,6 +359,7 @@ public class Downloader {
         return 0;
     }
 
+    /*
     private void printHeader(Map<String, List<String>> header){
         Log.d(MyConstant.TAG_DOWNLOADER, "Print Header: ");
         Iterator<String> it = header.keySet().iterator();
@@ -353,13 +373,17 @@ public class Downloader {
             Log.d(MyConstant.TAG_DOWNLOADER, key+" : "+bf.toString());
         }
     }
-
+    */
     private void onUpDateProgress (int contentlong, int done){
         mListener.onDownloadProgressUpdate(contentlong, done);
     }
 
     private void onDownloadDone(){
         mDoneListener.onDownloadDoneUpdate();
+    }
+
+    private void onDownloadPreparing() {
+        mPreparingListener.onDownloadPreparing();
     }
 
     private void onDownloadPause () {
